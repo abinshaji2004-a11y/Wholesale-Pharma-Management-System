@@ -36,6 +36,10 @@ class LoginView(views.APIView):
             user = authenticate(username=username, password=password)
             
             if user:
+                if user.role == 'dealer':
+                    if hasattr(user, 'profile') and user.profile.approval_status != 'approved':
+                        return Response({'error': 'Your account is pending admin approval or has been rejected.'}, status=status.HTTP_403_FORBIDDEN)
+                        
                 tokens = get_tokens_for_user(user)
                 return Response({'tokens': tokens, 'role': user.role, 'username': user.username})
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
