@@ -17,7 +17,7 @@ urlpatterns = [
     path('api/inventory/', include('inventory.urls')),
     path('api/orders/', include('orders.urls')),
     
-    path('', home_view, name='home'),
+    path('', TemplateView.as_view(template_name='login.html'), name='home'),
     path('products/', TemplateView.as_view(template_name='products.html'), name='products'),
     path('shop/', TemplateView.as_view(template_name='shop.html'), name='shop'),
     path('about/', TemplateView.as_view(template_name='about.html'), name='about'),
