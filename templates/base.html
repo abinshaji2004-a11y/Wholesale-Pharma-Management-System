@@ -217,9 +217,8 @@
                 const homeNav = document.getElementById('navItemHome');
                 if (homeNav) homeNav.style.display = 'none';
 
-                let dashUrl = '/dashboard/';
+                let dashUrl = '/profile/';
                 if (role === 'admin') dashUrl = '/admin-dashboard/';
-                if (role === 'customer') dashUrl = '/shop/';
                 
                 if (role === 'admin') {
                     const b2bNav = document.getElementById('navItemB2B');
@@ -248,22 +247,15 @@
                     document.getElementById('auth-buttons').innerHTML = `
                         <button onclick="logout()" class="btn btn-outline-danger ms-3 rounded-pill">Logout</button>
                     `;
-                } else if (role === 'customer') {
+                } else {
                     const b2bNav = document.getElementById('navItemB2B');
-                    if (b2bNav) b2bNav.style.display = 'none';
+                    if (b2bNav) b2bNav.style.display = 'block';
                     const cartIcon = document.getElementById('navCartIcon');
-                    if (cartIcon) cartIcon.style.display = 'none';
+                    if (cartIcon) cartIcon.style.display = 'block';
                     
                     document.getElementById('auth-buttons').innerHTML = `
                         <a href="/profile/" class="btn btn-outline-primary ms-3 rounded-pill"><i class="bi bi-person-circle"></i> My Profile</a>
                         <a href="/cart/" class="btn btn-primary-custom ms-2 rounded-pill"><i class="bi bi-cart3"></i> My Cart</a>
-                        <button onclick="logout()" class="btn btn-outline-danger ms-2 rounded-pill">Logout</button>
-                    `;
-                } else {
-                    const b2bNav = document.getElementById('navItemB2B');
-                    if (b2bNav) b2bNav.style.display = 'block';
-                    document.getElementById('auth-buttons').innerHTML = `
-                        <a href="${dashUrl}" class="btn btn-primary-custom ms-3">Dashboard</a>
                         <button onclick="logout()" class="btn btn-outline-danger ms-2 rounded-pill">Logout</button>
                     `;
                 }

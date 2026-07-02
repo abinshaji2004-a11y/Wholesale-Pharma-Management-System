@@ -31,6 +31,33 @@
         <!-- Shopping History & Return Tracking -->
         <div class="col-lg-8">
             <div class="glass-card p-4 h-100">
+                <!-- Profile & KYC Card -->
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3">Profile & KYC</h5>
+                    <div class="card border-0 rounded-4 shadow-sm" style="background-color: #ffffff;">
+                        <div class="card-body p-4">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="text-muted small mb-1">Email</div>
+                                    <div class="fw-medium" id="kycEmail">Loading...</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="text-muted small mb-1">Phone</div>
+                                    <div class="fw-medium" id="kycPhone">Loading...</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="text-muted small mb-1">GST Number</div>
+                                    <div class="fw-medium" id="kycGst">Loading...</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="text-muted small mb-1">Verification Status</div>
+                                    <div id="kycStatus">Loading...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Navigation Tabs -->
                 <ul class="nav nav-pills nav-fill p-1 bg-light border rounded-4 mb-4" id="profileTabs" role="tablist">
                     <li class="nav-item" role="presentation">
@@ -356,6 +383,32 @@
                 document.getElementById('editFirstName').value = data.first_name || '';
                 document.getElementById('editLastName').value = data.last_name || '';
                 document.getElementById('editPhone').value = data.phone_number || '';
+                
+                // Populate KYC Card
+                const kycEmailEl = document.getElementById('kycEmail');
+                const kycPhoneEl = document.getElementById('kycPhone');
+                const kycGstEl = document.getElementById('kycGst');
+                const kycStatusEl = document.getElementById('kycStatus');
+                
+                if (kycEmailEl) kycEmailEl.innerText = data.email || 'N/A';
+                if (kycPhoneEl) kycPhoneEl.innerText = data.phone_number || 'N/A';
+                
+                if (data.profile) {
+                    if (kycGstEl) kycGstEl.innerText = data.profile.gst_number || 'N/A';
+                    
+                    if (kycStatusEl) {
+                        if (data.profile.approval_status === 'approved' || data.profile.is_verified) {
+                            kycStatusEl.innerHTML = '<span class="badge bg-success rounded-pill px-3">Verified</span>';
+                        } else if (data.profile.approval_status === 'rejected') {
+                            kycStatusEl.innerHTML = '<span class="badge bg-danger rounded-pill px-3">Rejected</span>';
+                        } else {
+                            kycStatusEl.innerHTML = '<span class="badge bg-warning text-dark rounded-pill px-3">Pending</span>';
+                        }
+                    }
+                } else {
+                    if (kycGstEl) kycGstEl.innerText = 'N/A';
+                    if (kycStatusEl) kycStatusEl.innerHTML = '<span class="badge bg-secondary rounded-pill px-3">N/A</span>';
+                }
                 
             } else {
                 document.getElementById('profileName').innerText = 'Retail Customer';
