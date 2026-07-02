@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Abin Pharma - Trusted B2B Wholesale Partner{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="/static/css/style.css" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg glass-nav py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold fs-4 d-flex align-items-center" href="{% url 'home' %}">
+                <i class="bi bi-heart-pulse-fill text-gradient-primary fs-3 me-2"></i>
+                <span class="text-gradient-primary">Abin Pharma</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto">
+                    <li class="nav-item" id="navItemHome">
+                        <a class="nav-link fw-medium" href="{% url 'home' %}">Home</a>
+                    </li>
+                    <li class="nav-item" id="navItemShop">
+                        <a class="nav-link fw-medium" href="{% url 'shop' %}">Shop</a>
+                    </li>
+                    <li class="nav-item" id="navItemB2B" style="display: none;">
+                        <a class="nav-link fw-medium" href="{% url 'products' %}">B2B Products</a>
+                    </li>
+                    <li class="nav-item" id="navItemAdminDash" style="display: none;">
+                        <a class="nav-link fw-medium" href="/admin-dashboard/">Dashboard</a>
+                    </li>
+                    <li class="nav-item" id="navItemAdminPurchases" style="display: none;">
+                        <a class="nav-link fw-medium" href="/purchases/">Purchase Page</a>
+                    </li>
+                    <li class="nav-item" id="navItemAdminSales" style="display: none;">
+                        <a class="nav-link fw-medium" href="/sales/">Retail POS</a>
+                    </li>
+                    <li class="nav-item" id="navItemAdminReturns" style="display: none;">
+                        <a class="nav-link fw-medium" href="/admin-returns/">Returns</a>
+                    </li>
+                    <li class="nav-item" id="navItemAdminDrafts" style="display: none;">
+                        <a class="nav-link fw-medium" href="/draft-medicines/">Drafts</a>
+                    </li>
+                    <li class="nav-item" id="navItemAbout">
+                        <a class="nav-link fw-medium" href="{% url 'about' %}">About Us</a>
+                    </li>
+                    <li class="nav-item" id="navItemContact">
+                        <a class="nav-link fw-medium" href="{% url 'contact' %}">Contact</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center gap-3">
+                    <a href="{% url 'cart_page' %}" class="position-relative text-dark text-decoration-none" id="navCartIcon">
+                        <i class="bi bi-cart3 fs-5"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cart-badge" style="display:none;">
+                            0
+                        </span>
+                    </a>
+                    <div id="auth-buttons" class="ms-3 d-flex gap-2">
+                        <a href="{% url 'customer_login' %}" class="btn btn-primary-custom rounded-pill px-3">Shop Login</a>
+                        <a href="{% url 'login_page' %}" class="btn btn-outline-secondary rounded-pill px-3">B2B/Admin Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="custom-footer mt-auto">
+        <div class="container pt-5 pb-4">
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6 pe-lg-5">
+                    <h4 class="fw-bold mb-4 d-flex align-items-center text-white">
+                        <i class="bi bi-heart-pulse-fill text-success fs-3 me-2"></i> Abin Pharma
+                    </h4>
+                    <p class="text-white-50 mb-4 lh-lg">Your Trusted B2B Pharmaceutical Wholesale Partner. Supplying premium, certified healthcare products globally with uncompromising quality.</p>
+                    <div class="d-flex gap-3">
+                        <a href="#" class="social-icon"><i class="bi bi-facebook"></i></a>
+                        <a href="#" class="social-icon"><i class="bi bi-twitter"></i></a>
+                        <a href="#" class="social-icon"><i class="bi bi-linkedin"></i></a>
+                        <a href="#" class="social-icon"><i class="bi bi-instagram"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <h5 class="text-white fw-bold mb-4 position-relative footer-heading">Quick Links</h5>
+                    <ul class="list-unstyled footer-links">
+                        <li><a href="/"><i class="bi bi-chevron-right me-2 text-success"></i>Home</a></li>
+                        <li><a href="/products/"><i class="bi bi-chevron-right me-2 text-success"></i>Products</a></li>
+                        <li><a href="#"><i class="bi bi-chevron-right me-2 text-success"></i>Categories</a></li>
+                        <li><a href="#"><i class="bi bi-chevron-right me-2 text-success"></i>About Us</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <h5 class="text-white fw-bold mb-4 position-relative footer-heading">Contact Us</h5>
+                    <ul class="list-unstyled footer-contact">
+                        <li class="d-flex mb-3"><i class="bi bi-geo-alt text-success fs-5 me-3"></i> <span class="text-white-50">123 Health Ave, Medical City, NY 10012</span></li>
+                        <li class="d-flex mb-3"><i class="bi bi-envelope text-success fs-5 me-3"></i> <span class="text-white-50">support@abinpharma.com</span></li>
+                        <li class="d-flex"><i class="bi bi-telephone text-success fs-5 me-3"></i> <span class="text-white-50">+1 234 567 8900</span></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <h5 class="text-white fw-bold mb-4 position-relative footer-heading">Newsletter</h5>
+                    <p class="text-white-50 mb-3">Subscribe to get the latest updates and offers.</p>
+                    <div class="input-group newsletter-input p-1 rounded-pill">
+                        <input type="text" class="form-control border-0 bg-transparent text-white shadow-none ps-3" placeholder="Your Email Address...">
+                        <button class="btn btn-success rounded-pill px-4 fw-bold" type="button">Subscribe</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom py-3">
+            <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center text-center">
+                <p class="mb-0 text-white-50 small">&copy; 2026 Abin Pharma. All Rights Reserved.</p>
+                <div class="mt-2 mt-md-0">
+                    <a href="#" class="text-white-50 text-decoration-none small me-3 hover-white">Privacy Policy</a>
+                    <a href="#" class="text-white-50 text-decoration-none small hover-white">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Auth Check Script -->
+    <script>
+        // Override default window.alert with SweetAlert2
+        window.alert = function(message) {
+            let title = 'Notification';
+            let icon = 'info';
+            const msgLower = (message || '').toString().toLowerCase();
+            
+            if (msgLower.includes('success') || msgLower.includes('done') || msgLower.includes('restored') || msgLower.includes('added') || msgLower.includes('updated')) {
+                title = 'Success';
+                icon = 'success';
+            } else if (msgLower.includes('failed') || msgLower.includes('error') || msgLower.includes('invalid') || msgLower.includes('insufficient') || msgLower.includes('required')) {
+                title = 'Error';
+                icon = 'error';
+            } else if (msgLower.includes('warning') || msgLower.includes('delete') || msgLower.includes('cancel')) {
+                title = 'Warning';
+                icon = 'warning';
+            }
+            
+            Swal.fire({
+                title: title,
+                text: message,
+                icon: icon,
+                confirmButtonColor: '#10b981',
+                customClass: {
+                    popup: 'rounded-4 shadow border-0',
+                    confirmButton: 'btn btn-primary px-4 py-2 rounded-pill fw-bold'
+                }
+            });
+        };
+
+        // Define global showToast function
+        window.showToast = function(message, type = 'success') {
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+            Toast.fire({
+                icon: type,
+                title: message
+            });
+        };
+        document.addEventListener('DOMContentLoaded', () => {
+            // Highlight active page in navigation bar
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && (currentPath === href || (currentPath.startsWith(href) && href !== '/'))) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+
+            const token = localStorage.getItem('access_token');
+            let role = localStorage.getItem('user_role');
+            if (role === 'retail_customer') {
+                role = 'customer';
+                localStorage.setItem('user_role', 'customer');
+            }
+            if(token) {
+                const homeNav = document.getElementById('navItemHome');
+                if (homeNav) homeNav.style.display = 'none';
+
+                let dashUrl = '/dashboard/';
+                if (role === 'admin') dashUrl = '/admin-dashboard/';
+                if (role === 'customer') dashUrl = '/shop/';
+                
+                if (role === 'admin') {
+                    const b2bNav = document.getElementById('navItemB2B');
+                    if (b2bNav) b2bNav.style.display = 'block';
+                    
+                    const adminDash = document.getElementById('navItemAdminDash');
+                    if (adminDash) adminDash.style.display = 'block';
+                    const adminPurchases = document.getElementById('navItemAdminPurchases');
+                    if (adminPurchases) adminPurchases.style.display = 'block';
+                    const adminSales = document.getElementById('navItemAdminSales');
+                    if (adminSales) adminSales.style.display = 'block';
+                    const adminReturns = document.getElementById('navItemAdminReturns');
+                    if (adminReturns) adminReturns.style.display = 'block';
+                    const adminDrafts = document.getElementById('navItemAdminDrafts');
+                    if (adminDrafts) adminDrafts.style.display = 'block';
+                    
+                    const shopNav = document.getElementById('navItemShop');
+                    if (shopNav) shopNav.style.display = 'none';
+                    const aboutNav = document.getElementById('navItemAbout');
+                    if (aboutNav) aboutNav.style.display = 'none';
+                    const contactNav = document.getElementById('navItemContact');
+                    if (contactNav) contactNav.style.display = 'none';
+                    const cartIcon = document.getElementById('navCartIcon');
+                    if (cartIcon) cartIcon.style.display = 'none';
+                    
+                    document.getElementById('auth-buttons').innerHTML = `
+                        <button onclick="logout()" class="btn btn-outline-danger ms-3 rounded-pill">Logout</button>
+                    `;
+                } else if (role === 'customer') {
+                    const b2bNav = document.getElementById('navItemB2B');
+                    if (b2bNav) b2bNav.style.display = 'none';
+                    const cartIcon = document.getElementById('navCartIcon');
+                    if (cartIcon) cartIcon.style.display = 'none';
+                    
+                    document.getElementById('auth-buttons').innerHTML = `
+                        <a href="/profile/" class="btn btn-outline-primary ms-3 rounded-pill"><i class="bi bi-person-circle"></i> My Profile</a>
+                        <a href="/cart/" class="btn btn-primary-custom ms-2 rounded-pill"><i class="bi bi-cart3"></i> My Cart</a>
+                        <button onclick="logout()" class="btn btn-outline-danger ms-2 rounded-pill">Logout</button>
+                    `;
+                } else {
+                    const b2bNav = document.getElementById('navItemB2B');
+                    if (b2bNav) b2bNav.style.display = 'block';
+                    document.getElementById('auth-buttons').innerHTML = `
+                        <a href="${dashUrl}" class="btn btn-primary-custom ms-3">Dashboard</a>
+                        <button onclick="logout()" class="btn btn-outline-danger ms-2 rounded-pill">Logout</button>
+                    `;
+                }
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_role');
+            window.location.href = '/login/';
+        }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

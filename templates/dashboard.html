@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-3 mb-4">
+            <div class="glass-card p-4 sidebar">
+                <div class="text-center mb-4">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                        <i class="bi bi-person"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0" id="userName">User</h5>
+                    <p class="text-muted small mb-0" id="userRole">Dealer</p>
+                </div>
+                
+                <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                    <button class="nav-link active text-start" data-bs-toggle="pill" data-bs-target="#v-pills-overview" type="button" role="tab">
+                        <i class="bi bi-grid me-2"></i> Overview
+                    </button>
+                    <button class="nav-link text-start" data-bs-toggle="pill" data-bs-target="#v-pills-orders" type="button" role="tab">
+                        <i class="bi bi-box-seam me-2"></i> My Orders
+                    </button>
+                    <button class="nav-link text-start" data-bs-toggle="pill" data-bs-target="#v-pills-wishlist" type="button" role="tab">
+                        <i class="bi bi-heart me-2"></i> Wishlist
+                    </button>
+                    <button class="nav-link text-start" data-bs-toggle="pill" data-bs-target="#v-pills-profile" type="button" role="tab">
+                        <i class="bi bi-person-gear me-2"></i> Profile & KYC
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="col-lg-9">
+            <div class="tab-content" id="v-pills-tabContent">
+                
+                <!-- Overview -->
+                <div class="tab-pane fade show active fade-in-up" id="v-pills-overview" role="tabpanel">
+                    <h4 class="fw-bold mb-4">Dashboard Overview</h4>
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4">
+                            <div class="glass-card p-4 bg-primary text-white border-0">
+                                <h6 class="fw-normal mb-2 text-white-50">Total Orders</h6>
+                                <h2 class="fw-bold mb-0" id="statOrders">0</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="glass-card p-4 bg-success text-white border-0">
+                                <h6 class="fw-normal mb-2 text-white-50">Outstanding Balance</h6>
+                                <h2 class="fw-bold mb-0" id="statBalance">₹0.00</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="glass-card p-4 bg-info text-white border-0">
+                                <h6 class="fw-normal mb-2 text-white-50">Credit Limit</h6>
+                                <h2 class="fw-bold mb-0" id="statLimit">₹0.00</h2>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-4">
+                        <h5 class="fw-bold mb-4">Recent Orders</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Payment</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentOrdersTable">
+                                <tr><td colspan="6" class="text-center py-4">Loading...</td></tr>
+                            </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orders -->
+                <div class="tab-pane fade" id="v-pills-orders" role="tabpanel">
+                    <h4 class="fw-bold mb-4">Order History</h4>
+                    <div class="glass-card p-4">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Payment</th>
+                                    <th>Tracking No.</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allOrdersTable">
+                            </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wishlist -->
+                <div class="tab-pane fade" id="v-pills-wishlist" role="tabpanel">
+                    <h4 class="fw-bold mb-4">My Wishlist</h4>
+                    <div class="row g-4" id="wishlistContainer">
+                        <div class="col-12 text-center text-muted py-4">Loading wishlist...</div>
+                    </div>
+                </div>
+
+                <!-- Profile -->
+                <div class="tab-pane fade" id="v-pills-profile" role="tabpanel">
+                    <h4 class="fw-bold mb-4">Profile & KYC</h4>
+                    <div class="glass-card p-4">
+                        <div id="profileDetails">Loading...</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const token = localStorage.getItem('access_token');
+    let role = localStorage.getItem('user_role');
+    if (role === 'retail_customer') {
+        role = 'customer';
+        localStorage.setItem('user_role', 'customer');
+    }
+    if(!token) {
+        window.location.href = '/login/';
+    } else if (role === 'customer') {
+        window.location.href = '/shop/';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProfile();
+        loadOrders();
+    });
+
+    async function loadProfile() {
+        try {
+            const res = await fetch('/api/accounts/profile/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.status === 401) {
+                logout();
+                return;
+            }
+            const data = await res.json();
+            
+            document.getElementById('userName').innerText = data.first_name + ' ' + data.last_name || data.username;
+            document.getElementById('userRole').innerText = data.role.toUpperCase();
+            
+            if(data.profile) {
+                document.getElementById('statBalance').innerText = '₹' + data.profile.outstanding_balance;
+                document.getElementById('statLimit').innerText = '₹' + data.profile.credit_limit;
+                
+                let phtml = `
+                    <div class="row g-3">
+                        <div class="col-md-6"><p class="text-muted mb-1">Email</p><p class="fw-medium">${data.email}</p></div>
+                        <div class="col-md-6"><p class="text-muted mb-1">Phone</p><p class="fw-medium">${data.phone_number}</p></div>
+                        <div class="col-md-6"><p class="text-muted mb-1">GST Number</p><p class="fw-medium">${data.profile.gst_number || 'N/A'}</p></div>
+                        <div class="col-md-6"><p class="text-muted mb-1">Verification Status</p>
+                            ${data.profile.is_verified ? '<span class="badge bg-success">Verified</span>' : '<span class="badge bg-warning text-dark">Pending</span>'}
+                        </div>
+                    </div>
+                `;
+                document.getElementById('profileDetails').innerHTML = phtml;
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    let currentOrders = [];
+
+    async function loadOrders() {
+        try {
+            const res = await fetch('/api/orders/history/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            currentOrders = data;
+            
+            document.getElementById('statOrders').innerText = data.length;
+                 let html = '';
+            let recentHtml = '';
+            if(data.length === 0) {
+                html = '<tr><td colspan="7" class="text-center text-muted">No orders found.</td></tr>';
+                document.getElementById('recentOrdersTable').innerHTML = '<tr><td colspan="6" class="text-center text-muted">No orders found.</td></tr>';
+            } else {
+                data.forEach(order => {
+                    let badge = '';
+                    if(order.status === 'delivered') badge = 'bg-success';
+                    else if(order.status === 'pending') badge = 'bg-warning text-dark';
+                    else if(order.status === 'cancelled') badge = 'bg-danger';
+                    else badge = 'bg-info text-dark';
+                    
+                    const tracking = order.tracking_number || 'Pending';
+                    const isPaid = order.payment_status === 'completed';
+                    const paidAmt = parseFloat(order.payment_amount_paid || 0).toFixed(2);
+                    const leftAmt = parseFloat(order.payment_amount_remaining || order.total_amount).toFixed(2);
+                    const methodNames = {'upi': 'UPI', 'card': 'Card', 'netbanking': 'Net Banking', 'bank_transfer': 'Bank Transfer', 'credit_account': 'Credit Account', 'draft': 'Draft'};
+                    const payMethod = methodNames[order.payment_method] || order.payment_method || 'N/A';
+                    const paymentBadge = isPaid ?
+                        `<div>
+                            <span class="badge bg-success-light text-success border border-success px-2 py-1 mb-1">Closed</span>
+                            <div class="small text-muted" style="font-size:0.75rem;"><i class="bi bi-wallet2 me-1"></i>${payMethod}</div>
+                        </div>` :
+                        `<div>
+                            <span class="badge bg-danger-light text-danger border border-danger px-2 py-1 mb-1">Pending</span>
+                            <div class="small text-muted" style="font-size:0.75rem;"><i class="bi bi-wallet2 me-1"></i>${payMethod}</div>
+                            <div class="small text-muted mt-1" style="font-size:0.75rem; line-height:1.2;">
+                                Paid: ₹${paidAmt}<br>
+                                Left: ₹${leftAmt}
+                            </div>
+                        </div>`;
+
+                    // Recent orders table (6 columns)
+                    recentHtml += `
+                    <tr>
+                        <td class="fw-medium"><a href="#" onclick="viewOrderDetails(${order.id}); return false;" class="text-decoration-none text-primary">#${order.order_number}</a></td>
+                        <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                        <td class="fw-bold">₹${order.total_amount}</td>
+                        <td><span class="badge ${badge}">${order.status.toUpperCase()}</span></td>
+                        <td>${paymentBadge}</td>
+                        <td><button onclick="downloadInvoice(${order.id})" class="btn btn-sm btn-outline-primary" title="Print Invoice"><i class="bi bi-file-earmark-pdf"></i> Download</button></td>
+                    </tr>
+                    `;
+                    
+                    // All orders table (7 columns)
+                    html += `
+                    <tr>
+                        <td class="fw-medium"><a href="#" onclick="viewOrderDetails(${order.id}); return false;" class="text-decoration-none text-primary">#${order.order_number}</a></td>
+                        <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                        <td class="fw-bold">₹${order.total_amount}</td>
+                        <td>
+                            <div class="progress mb-1" style="height: 5px;">
+                                <div class="progress-bar ${badge}" role="progressbar" style="width: ${order.status==='pending'?'25%':order.status==='packed'?'50%':order.status==='shipped'?'75%':order.status==='delivered'?'100%':'0%'}"></div>
+                            </div>
+                            <span class="badge ${badge}">${order.status.toUpperCase()}</span>
+                        </td>
+                        <td>${paymentBadge}</td>
+                        <td class="small text-muted">${tracking}</td>
+                        <td><button onclick="downloadInvoice(${order.id})" class="btn btn-sm btn-outline-primary" title="Print Invoice"><i class="bi bi-file-earmark-pdf"></i> Download</button></td>
+                    </tr>
+                    `;
+                });
+                document.getElementById('recentOrdersTable').innerHTML = recentHtml;
+            }
+            document.getElementById('allOrdersTable').innerHTML = html;
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    function viewOrderDetails(orderId) {
+        const order = currentOrders.find(o => o.id === orderId);
+        if(!order) return;
+        
+        document.getElementById('modalOrderNumber').innerText = '#' + order.order_number;
+        document.getElementById('modalOrderDate').innerText = new Date(order.created_at).toLocaleString();
+        document.getElementById('modalOrderStatus').innerText = order.status.toUpperCase();
+        document.getElementById('modalOrderTotal').innerText = '₹' + order.total_amount;
+        
+        let itemsHtml = '';
+        order.items.forEach(item => {
+            const name = item.product ? item.product.name : 'Unknown Product';
+            itemsHtml += `
+            <tr>
+                <td>${name}</td>
+                <td>${item.quantity}</td>
+                <td>₹${item.price}</td>
+                <td>₹${(item.quantity * parseFloat(item.price)).toFixed(2)}</td>
+            </tr>
+            `;
+        });
+        document.getElementById('modalOrderItems').innerHTML = itemsHtml;
+        
+        const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+        modal.show();
+    }
+
+    async function downloadInvoice(orderId) {
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(`/api/orders/${orderId}/invoice/pdf/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Invoice_${orderId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert('Failed to download invoice. You might need to log in again.');
+            }
+        } catch(err) {
+            console.error(err);
+        }
+    }
+</script>
+{% endblock %}

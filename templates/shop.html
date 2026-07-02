@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Shop - Abin Pharma{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5 min-vh-100" style="background-color: var(--bg-color);">
+    <div class="container">
+        <div class="text-center mb-5 fade-in-up">
+            <h1 class="fw-bold hero-title mb-3">Health & Wellness Store</h1>
+            <p class="text-muted fs-5">Browse our complete catalog of certified medicines and healthcare products.</p>
+        </div>
+
+        <div class="row mb-4 fade-in-up" style="animation-delay: 0.1s; position: relative; z-index: 10;">
+            <div class="col-lg-6 col-md-8 mx-auto">
+                <div class="row g-2">
+                    <div class="col-sm-8 col-12">
+                        <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white px-2">
+                            <span class="input-group-text bg-white border-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="shopSearchInput" class="form-control border-0 shadow-none py-2" placeholder="Search by name, brand...">
+                        </div>
+                    </div>
+                    <div class="col-sm-4 col-12">
+                        <div class="dropdown">
+                            <button class="btn btn-white bg-white border-0 shadow-sm fw-medium text-success py-2 rounded-pill px-4 w-100 dropdown-toggle text-start d-flex justify-content-between align-items-center" type="button" id="categoryDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span id="selectedCategoryLabel">All Categories</span>
+                            </button>
+                            <ul class="dropdown-menu shadow border-0" aria-labelledby="categoryDropdownBtn" style="max-height: 250px; overflow-y: auto; min-width: 240px;" id="categoryDropdownMenu">
+                                <li><a class="dropdown-item py-2 fw-medium active" href="#" onclick="selectCategory('', 'All Categories')">All Categories</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4" id="shopProductsGrid">
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+        <div id="cartToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center gap-2 py-3 px-3">
+                    <i id="toastIcon" class="bi bi-cart-check-fill fs-5"></i>
+                    <span id="toastMessage" class="fw-medium">Item successfully added to cart!</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let allProducts = [];
+    let allCategories = [];
+    let activeCategory = '';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            // Parse category from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const catParam = urlParams.get('category');
+            if (catParam) {
+                activeCategory = catParam;
+            }
+
+            // Load Products
+            const res = await fetch('/api/inventory/products/');
+            allProducts = await res.json();
+
+            // Load Categories
+            const catRes = await fetch('/api/inventory/categories/');
+            allCategories = await catRes.json();
+            renderCategoryDropdown(allCategories);
+
+            if (activeCategory) {
+                const found = allCategories.find(c => c.id == activeCategory);
+                if (found) {
+                    selectCategory(activeCategory, found.name);
+                }
+            }
+            
+            applyFilters();
+        } catch (err) {
+            console.error('Failed to load shop data:', err);
+            document.getElementById('shopProductsGrid').innerHTML = '<div class="col-12 text-center text-danger">Failed to load products. Please try again later.</div>';
+        }
+    });
+
+    function renderCategoryDropdown(categories) {
+        let html = '<li><a class="dropdown-item py-2 fw-medium active" href="#" onclick="selectCategory(\'\', \'All Categories\')">All Categories</a></li>';
+        categories.forEach(cat => {
+            html += `<li><a class="dropdown-item py-2" href="#" onclick="selectCategory(${cat.id}, '${cat.name.replace(/'/g, "\\'")}')">${cat.name}</a></li>`;
+        });
+        const menu = document.getElementById('categoryDropdownMenu');
+        if (menu) menu.innerHTML = html;
+    }
+
+    function selectCategory(id, name) {
+        document.getElementById('selectedCategoryLabel').innerText = name;
+        
+        document.querySelectorAll('#categoryDropdownMenu .dropdown-item').forEach(item => {
+            if (item.innerText === name) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        
+        filterByCategory(id);
+    }
+
+    function filterByCategory(categoryId) {
+        activeCategory = categoryId;
+        applyFilters();
+    }
+
+    document.getElementById('shopSearchInput').addEventListener('input', () => {
+        applyFilters();
+    });
+
+    function applyFilters() {
+        const q = document.getElementById('shopSearchInput').value.toLowerCase();
+        let filtered = allProducts;
+
+        if (activeCategory) {
+            filtered = filtered.filter(p => p.category && p.category.id === parseInt(activeCategory));
+        }
+
+        if (q) {
+            filtered = filtered.filter(p => 
+                p.name.toLowerCase().includes(q) || 
+                (p.generic_name && p.generic_name.toLowerCase().includes(q)) || 
+                (p.brand_name && p.brand_name.toLowerCase().includes(q)) ||
+                (p.brand && p.brand.name && p.brand.name.toLowerCase().includes(q))
+            );
+        }
+
+        renderProducts(filtered);
+    }
+
+    function renderProducts(products) {
+        const grid = document.getElementById('shopProductsGrid');
+        if (products.length === 0) {
+            grid.innerHTML = '<div class="col-12 text-center text-muted py-5">No products found matching your search.</div>';
+            return;
+        }
+
+        let html = '';
+        products.forEach(p => {
+            const imgSrc = p.image ? (p.image + '?v=' + new Date().getTime()) : 'https://via.placeholder.com/400x300?text=No+Image';
+            const price = parseFloat(p.wholesale_price).toFixed(2);
+            
+            html += `
+            <div class="col-lg-3 col-md-4 col-sm-6 fade-in-up">
+                <div class="card glass-card h-100 border-0 overflow-hidden shadow-sm">
+                    <div class="position-relative" style="height: 200px; background-color: #fff;">
+                        <img src="${imgSrc}" class="w-100 h-100 object-fit-contain p-3" alt="${p.name}">
+                        ${p.requires_prescription ? '<span class="badge bg-danger position-absolute top-0 end-0 m-2">Prescription Required</span>' : ''}
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title fw-bold text-dark mb-1 text-truncate" title="${p.name}">${p.name}</h5>
+                        <p class="card-text text-muted small mb-2 text-truncate" title="${p.generic_name || ''}">${p.generic_name || 'N/A'}</p>
+                        <div class="mt-auto pt-3 border-top">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fs-5 fw-bold text-success">₹${price}</span>
+                                <div class="input-group input-group-sm" style="width: 90px;">
+                                    <button class="btn btn-outline-secondary py-0 px-2 rounded-start-pill" type="button" onclick="adjustQty(${p.id}, -1)">-</button>
+                                    <input type="number" id="qty_${p.id}" class="form-control text-center p-0 border-secondary fw-semibold" value="1" min="1" style="font-size: 0.85rem; height: 28px; -moz-appearance: textfield;">
+                                    <button class="btn btn-outline-secondary py-0 px-2 rounded-end-pill" type="button" onclick="adjustQty(${p.id}, 1)">+</button>
+                                </div>
+                            </div>
+                            <button onclick="addToCart(${p.id})" class="btn btn-sm btn-primary-custom w-100 rounded-pill py-2 fw-semibold d-flex align-items-center justify-content-center gap-1">
+                                <i class="bi bi-cart-plus"></i> Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+        grid.innerHTML = html;
+    }
+
+    window.adjustQty = function(productId, delta) {
+        const input = document.getElementById(`qty_${productId}`);
+        if (input) {
+            let val = parseInt(input.value) || 1;
+            val += delta;
+            if (val < 1) val = 1;
+            input.value = val;
+        }
+    }
+
+    async function addToCart(productId) {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            alert('Please login or create a Retail Customer account to add items to your cart.');
+            window.location.href = '/customer-login/';
+            return;
+        }
+
+        const qtyInput = document.getElementById(`qty_${productId}`);
+        const quantity = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+
+        try {
+            const res = await fetch('/api/orders/cart/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ product_id: productId, quantity: quantity })
+            });
+
+            if (res.ok) {
+                showToast('Item successfully added to cart!', 'success');
+                if (qtyInput) qtyInput.value = 1;
+            } else {
+                showToast('Failed to add item to cart. Make sure your account is active.', 'danger');
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Network error while adding to cart.', 'danger');
+        }
+    }
+
+    function showToast(message, type = 'success') {
+        const toastEl = document.getElementById('cartToast');
+        const toastMsg = document.getElementById('toastMessage');
+        const toastIcon = document.getElementById('toastIcon');
+        
+        if (toastEl && toastMsg) {
+            toastMsg.innerText = message;
+            
+            toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+            if (toastIcon) toastIcon.className = 'bi fs-5';
+            
+            if (type === 'success') {
+                toastEl.classList.add('bg-success');
+                if (toastIcon) toastIcon.classList.add('bi-cart-check-fill');
+            } else if (type === 'danger') {
+                toastEl.classList.add('bg-danger');
+                if (toastIcon) toastIcon.classList.add('bi-exclamation-octagon-fill');
+            } else {
+                toastEl.classList.add('bg-warning', 'text-dark');
+                if (toastIcon) toastIcon.classList.add('bi-exclamation-triangle-fill');
+            }
+            
+            const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+            toast.show();
+        }
+    }
+</script>
+{% endblock %}

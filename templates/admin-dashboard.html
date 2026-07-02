@@ -1,0 +1,1194 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">Admin <span class="text-primary">Dashboard</span></h3>
+            <p class="text-muted small">Real-time enterprise analytics and management</p>
+        </div>
+        <div>
+            <!-- Excel Tools Dropdown -->
+            <div class="btn-group me-2">
+                <button type="button" class="btn btn-outline-success dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel Tools
+                </button>
+                <ul class="dropdown-menu border-0 shadow">
+                    <li><a class="dropdown-item py-2 fw-medium" href="#" onclick="exportMedicinesExcel()"><i class="bi bi-download me-2 text-success"></i>Export Medicines</a></li>
+                    <li><a class="dropdown-item py-2 fw-medium" href="#" onclick="document.getElementById('excelImportFile').click()"><i class="bi bi-upload me-2 text-primary"></i>Import Medicines</a></li>
+                    <li><a class="dropdown-item py-2 fw-medium" href="#" onclick="exportOrdersExcel()"><i class="bi bi-file-earmark-arrow-down me-2 text-info"></i>Export Orders</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item py-2 fw-bold text-danger" href="#" onclick="dangerDeleteAllMedicines()"><i class="bi bi-trash-fill me-2"></i>Delete All Medicines</a></li>
+                </ul>
+            </div>
+            
+            <button class="btn btn-primary shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#addMedicineModal"><i class="bi bi-plus-circle"></i> Add Medicine</button>
+            <button class="btn btn-outline-primary" onclick="window.location.href='/admin/'">Open Django Admin</button>
+            <input type="file" id="excelImportFile" accept=".xlsx, .xls" style="display: none;" onchange="importMedicinesExcel(event)">
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-xxl col-xl-4 col-md-6">
+            <div class="glass-card p-4 border-start border-primary border-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted fw-bold mb-2">TOTAL REVENUE (30 Days)</h6>
+                        <h3 class="fw-bold mb-0 text-dark" id="dashRevenue">₹0.00</h3>
+                    </div>
+                    <div class="bg-primary-light rounded-circle p-3 text-primary">
+                        <i class="bi bi-currency-rupee fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl col-xl-4 col-md-6">
+            <div class="glass-card p-4 border-start border-success border-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted fw-bold mb-2">ORDERS (30 Days)</h6>
+                        <h3 class="fw-bold mb-0 text-dark" id="dashOrders">0</h3>
+                    </div>
+                    <div class="bg-success-light rounded-circle p-3 text-success">
+                        <i class="bi bi-cart-check fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl col-xl-4 col-md-6">
+            <div class="glass-card p-4 border-start border-info border-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted fw-bold mb-2">ACTIVE DEALERS</h6>
+                        <h3 class="fw-bold mb-0 text-dark" id="dashDealers">0</h3>
+                    </div>
+                    <div class="bg-info-light rounded-circle p-3 text-info">
+                        <i class="bi bi-people fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl col-xl-4 col-md-6">
+            <div class="glass-card p-4 border-start border-warning border-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted fw-bold mb-2">LOW STOCK ALERTS</h6>
+                        <h3 class="fw-bold mb-0 text-dark" id="dashLowStock">0</h3>
+                    </div>
+                    <div class="bg-warning-light rounded-circle p-3 text-warning">
+                        <i class="bi bi-exclamation-triangle fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl col-xl-4 col-md-6">
+            <div class="glass-card p-4 border-start border-danger border-5" style="border-left-color: #dc3545 !important;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted fw-bold mb-2">PENDING AMOUNT</h6>
+                        <h3 class="fw-bold mb-0 text-dark" id="dashPendingAmount">₹0.00</h3>
+                    </div>
+                    <div class="rounded-circle p-3 text-danger" style="background-color: rgba(220, 53, 69, 0.1);">
+                        <i class="bi bi-wallet2 fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl col-xl-4 col-md-6">
+            <div class="glass-card p-4 border-start border-secondary border-5" style="border-left-color: #f8f9fa !important; background-color: #fffafb;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted fw-bold mb-2">TOTAL PRODUCTS</h6>
+                        <h3 class="fw-bold mb-0 text-dark" id="dashProducts">0</h3>
+                    </div>
+                    <div class="rounded-circle p-3 text-secondary" style="background-color: rgba(108, 117, 125, 0.1);">
+                        <i class="bi bi-capsule fs-3"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="glass-card p-4 h-100">
+                <h5 class="fw-bold mb-4">Sales Overview</h5>
+                <canvas id="salesChart" height="100"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="glass-card p-4 h-100">
+                <h5 class="fw-bold mb-4">Orders by Category</h5>
+                <canvas id="categoryChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="glass-card p-4 h-100 border-start border-warning border-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0 text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Low Stock Alerts</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Stock</th>
+                                <th>Min Required</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lowStockTable">
+                            <tr><td colspan="3" class="text-center py-3">Loading alerts...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="glass-card p-4 h-100 border-start border-danger border-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0 text-danger"><i class="bi bi-clock-history me-2"></i>Near Expiry Alerts (90 Days)</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Product (Batch)</th>
+                                <th>Qty</th>
+                                <th>Expiry Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nearExpiryTable">
+                            <tr><td colspan="3" class="text-center py-3">Loading alerts...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders & Approvals Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="glass-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Recent Orders</h5>
+                    <a href="/sales/" class="btn btn-sm btn-outline-primary">View POS</a>
+                </div>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Payment</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allOrdersTable">
+                            <tr><td colspan="6" class="text-center py-3">Loading orders...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="glass-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Pending Dealer Approvals</h5>
+                </div>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Username</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingDealersTable">
+                            <tr><td colspan="2" class="text-center py-3">Loading dealers...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+    </div>
+
+    <!-- Manage Customer Profiles Section -->
+    <div class="row g-4 mt-2">
+        <div class="col-12">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-people me-2 text-primary"></i>Manage Customer Profiles</h5>
+                    <div class="input-group input-group-sm" style="width: 300px;">
+                        <input type="text" id="adminUserSearchInput" class="form-control" placeholder="Search customer/dealer username or name..." oninput="searchUsersForAdmin()">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Role</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Username</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUserListTable">
+                            <tr><td colspan="5" class="text-center py-3 text-muted">Use the search bar above to lookup users.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Edit User Modal -->
+<div class="modal fade" id="adminEditUserModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0 shadow-lg">
+            <div class="modal-header border-bottom border-light pb-2">
+                <h5 class="modal-title fw-bold text-dark" id="adminEditUserModalTitle">Edit Customer Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="adminEditUserForm" onsubmit="saveCustomerProfileAdmin(event)">
+                    <input type="hidden" id="adminEditUserId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Username</label>
+                        <input type="text" class="form-control" id="adminEditUsername" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Email Address</label>
+                        <input type="email" class="form-control" id="adminEditEmail" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">First Name</label>
+                            <input type="text" class="form-control" id="adminEditFirstName">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">Last Name</label>
+                            <input type="text" class="form-control" id="adminEditLastName">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Phone Number</label>
+                        <input type="text" class="form-control" id="adminEditPhone">
+                    </div>
+                    
+                    <!-- Dealer-specific fields container -->
+                    <div id="adminEditDealerFields" class="d-none border-top pt-3 mt-3">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold">Credit Limit (₹)</label>
+                            <input type="number" step="0.01" class="form-control" id="adminEditCreditLimit">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold">Address</label>
+                            <textarea class="form-control" id="adminEditAddress" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-custom w-100 py-2.5 mt-3 fw-bold" id="adminSaveProfileBtn">
+                        Save Profile Changes
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Medicine Modal -->
+<div class="modal fade" id="addMedicineModal" tabindex="-1" aria-labelledby="addMedicineModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content glass-card border-0">
+      <div class="modal-header border-bottom border-light">
+        <h5 class="modal-title fw-bold" id="addMedicineModalLabel">Add New Medicine</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="addMedicineForm" onsubmit="submitMedicine(event)">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Product Name</label>
+                    <input type="text" class="form-control" name="name" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Generic Name</label>
+                    <input type="text" class="form-control" name="generic_name">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Category ID</label>
+                    <input type="number" class="form-control" name="category_id" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Brand ID</label>
+                    <input type="number" class="form-control" name="brand_id">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Pack Size</label>
+                    <input type="text" class="form-control" name="pack_size" placeholder="e.g. 10 Tablets">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">MRP (₹)</label>
+                    <input type="number" step="0.01" class="form-control" name="mrp" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Wholesale Price (₹)</label>
+                    <input type="number" step="0.01" class="form-control" name="wholesale_price" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label text-muted small fw-bold">Initial Batch No.</label>
+                    <input type="text" class="form-control" name="batch_number" placeholder="e.g. B123">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Expiry Date</label>
+                    <input type="date" class="form-control" name="expiry_date">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-muted small fw-bold">Initial Stock Qty</label>
+                    <input type="number" class="form-control" name="stock_quantity" value="0" min="0">
+                </div>
+                <div class="col-12">
+                    <label class="form-label text-muted small fw-bold">Product Image</label>
+                    <input type="file" class="form-control" name="image" accept="image/*">
+                </div>
+                <div class="col-12">
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="add_is_active" checked>
+                        <label class="form-check-label fw-bold text-muted small" for="add_is_active">Make Active (Uncheck to save as Draft)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-end">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-secondary px-4 ms-2 fw-semibold" onclick="submitMedicine(null, true)"><i class="bi bi-file-earmark-plus"></i> Save as Draft</button>
+                <button type="submit" class="btn btn-primary px-4 ms-2 fw-semibold"><i class="bi bi-check-circle"></i> Save Product</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Order Details Modal -->
+<div class="modal fade" id="orderDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold">Order <span id="modalOrderNumber"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <small class="text-muted d-block text-uppercase fw-bold mb-1">Date</small>
+                        <span id="modalOrderDate" class="fw-medium"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted d-block text-uppercase fw-bold mb-1">Status</small>
+                        <span id="modalOrderStatus" class="badge bg-primary"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <small class="text-muted d-block text-uppercase fw-bold mb-1">Total</small>
+                        <span id="modalOrderTotal" class="fw-bold fs-5 text-dark"></span>
+                    </div>
+                </div>
+                
+                <h6 class="fw-bold mb-3 border-bottom pb-2">Items Ordered</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalOrderItems">
+                            <!-- Items inserted via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const role = localStorage.getItem('user_role');
+    if(role !== 'admin') {
+        alert('Unauthorized access');
+        window.location.href = '/dashboard/';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Sales Line Chart
+        const ctxSales = document.getElementById('salesChart').getContext('2d');
+        new Chart(ctxSales, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                datasets: [{
+                    label: 'Revenue (₹ Lakhs)',
+                    data: [12, 19, 15, 25, 22, 30, 28],
+                    borderColor: '#0A58CA',
+                    backgroundColor: 'rgba(10, 88, 202, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { borderDash: [5, 5] } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Category Doughnut Chart
+        const ctxCat = document.getElementById('categoryChart').getContext('2d');
+        new Chart(ctxCat, {
+            type: 'doughnut',
+            data: {
+                labels: ['Prescription', 'OTC', 'Devices', 'Supplements'],
+                datasets: [{
+                    data: [45, 25, 15, 15],
+                    backgroundColor: ['#0A58CA', '#198754', '#0dcaf0', '#ffc107'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '75%',
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        loadAnalytics();
+        loadAlerts();
+        loadAllOrders();
+        loadPendingDealers();
+    });
+
+    async function loadAnalytics() {
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/orders/reports/power-bi/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if(data.metrics) {
+                document.getElementById('dashRevenue').innerText = '₹' + parseFloat(data.metrics.last_30_days_revenue || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
+                document.getElementById('dashOrders').innerText = data.metrics.last_30_days_orders || 0;
+                if (document.getElementById('dashDealers')) document.getElementById('dashDealers').innerText = data.metrics.active_dealers || 0;
+                if (document.getElementById('dashProducts')) document.getElementById('dashProducts').innerText = data.metrics.total_products || 0;
+                if (document.getElementById('dashPendingAmount')) document.getElementById('dashPendingAmount').innerText = '₹' + parseFloat(data.metrics.pending_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
+            }
+        } catch(err) {
+            console.error('Error loading analytics', err);
+        }
+    }
+
+    async function loadAlerts() {
+        const token = localStorage.getItem('access_token');
+        try {
+            // Low Stock
+            const resLow = await fetch('/api/inventory/alerts/low-stock/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const dataLow = await resLow.json();
+            
+            document.getElementById('dashLowStock').innerText = dataLow.length;
+
+            let htmlLow = '';
+            if(dataLow.length === 0) {
+                htmlLow = '<tr><td colspan="3" class="text-center text-muted">No low stock items</td></tr>';
+            } else {
+                dataLow.forEach(item => {
+                    htmlLow += `
+                    <tr>
+                        <td class="fw-medium">${item.name} <br><small class="text-muted">${item.brand}</small></td>
+                        <td class="fw-bold text-danger">${item.total_stock}</td>
+                        <td>${item.min_required}</td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('lowStockTable').innerHTML = htmlLow;
+            
+            // Near Expiry
+            const resExp = await fetch('/api/inventory/alerts/near-expiry/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const dataExp = await resExp.json();
+            
+            let htmlExp = '';
+            if(dataExp.length === 0) {
+                htmlExp = '<tr><td colspan="3" class="text-center text-muted">No batches expiring soon</td></tr>';
+            } else {
+                dataExp.forEach(item => {
+                    htmlExp += `
+                    <tr>
+                        <td class="fw-medium">${item.product_name} <br><small class="text-muted">Batch: ${item.batch_number}</small></td>
+                        <td>${item.stock_quantity}</td>
+                        <td class="fw-bold text-danger">${item.expiry_date}</td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('nearExpiryTable').innerHTML = htmlExp;
+
+        } catch (err) {
+            console.error('Error loading alerts:', err);
+        }
+    }
+
+    let currentOrders = [];
+
+    async function loadAllOrders() {
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/orders/history/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            currentOrders = data;
+            
+            let html = '';
+            if(data.length === 0) {
+                html = '<tr><td colspan="6" class="text-center text-muted">No recent orders</td></tr>';
+            } else {
+                data.slice(0, 10).forEach(order => { // Show top 10
+                    const isPaid = order.payment_status === 'completed';
+                    
+                    const paidAmt = parseFloat(order.payment_amount_paid || 0).toFixed(2);
+                    const leftAmt = parseFloat(order.payment_amount_remaining || order.total_amount).toFixed(2);
+                    const totalAmt = parseFloat(order.total_amount).toFixed(2);
+                    
+                    const methodNames = {'upi': 'UPI', 'card': 'Card', 'netbanking': 'Net Banking', 'bank_transfer': 'Bank Transfer', 'credit_account': 'Credit Account', 'draft': 'Draft'};
+                    const payMethod = methodNames[order.payment_method] || order.payment_method || 'N/A';
+                    
+                    const paymentBadge = isPaid ? 
+                        `<div>
+                            <span class="badge bg-success-light text-success border border-success px-2 py-1 mb-1">Closed (₹${totalAmt})</span>
+                            <div class="small text-muted" style="font-size:0.75rem;"><i class="bi bi-wallet2 me-1"></i>${payMethod}</div>
+                        </div>` : 
+                        `<div>
+                            <span class="badge bg-danger-light text-danger border border-danger px-2 py-1 mb-1">Pending</span>
+                            <div class="small text-muted" style="font-size:0.75rem;"><i class="bi bi-wallet2 me-1"></i>${payMethod}</div>
+                            <div class="small text-muted mt-1" style="font-size:0.75rem; line-height:1.2;">
+                                Paid: ₹${paidAmt}<br>
+                                Left: ₹${leftAmt}
+                            </div>
+                         </div>`;
+                    
+                    const payBtn = isPaid ?
+                        `<button onclick="undoPayment(${order.id})" class="btn btn-sm btn-outline-danger me-1" title="Undo Payment / Re-open"><i class="bi bi-arrow-counterclockwise"></i></button>` :
+                        `<button onclick="closePayment(${order.id}, ${totalAmt}, ${paidAmt}, ${leftAmt})" class="btn btn-sm btn-outline-success me-1" title="Record Payment Receipt"><i class="bi bi-cash-coin"></i></button>`;
+
+                    const name = order.customer_name || 'Walk-in Customer';
+                    const phone = order.customer_phone !== 'N/A' ? order.customer_phone : '';
+                    const cleanAddress = (order.shipping_address || '').split(/\nPhone:/i)[0].trim().replace(/\n/g, ', ') || 'Walk-in';
+
+                    html += `
+                    <tr>
+                        <td class="fw-bold"><a href="#" onclick="viewOrderDetails(${order.id}); return false;" class="text-decoration-none text-primary">#${order.order_number}</a></td>
+                        <td>
+                            <div class="fw-bold text-dark">${name}</div>
+                            ${phone ? `<div class="small text-muted" style="font-size: 0.8rem;"><i class="bi bi-telephone-fill text-primary small me-1"></i>${phone}</div>` : ''}
+                            <div class="small text-secondary" style="font-size: 0.8rem; max-width: 220px; line-height: 1.2;">
+                                <i class="bi bi-geo-alt-fill text-secondary small me-1"></i>${cleanAddress}
+                            </div>
+                        </td>
+                        <td class="fw-bold text-success">₹${totalAmt}</td>
+                        <td>
+                            <select class="form-select form-select-sm" style="width: 120px;" onchange="updateOrderStatus(${order.id}, this.value)">
+                                <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="packed" ${order.status === 'packed' ? 'selected' : ''}>Packed</option>
+                                <option value="shipped" ${order.status === 'shipped' ? 'selected' : ''}>Shipped</option>
+                                <option value="delivered" ${order.status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                                <option value="cancelled" ${order.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </td>
+                        <td>${paymentBadge}</td>
+                        <td>
+                            ${payBtn}
+                            <button onclick="downloadInvoice(${order.id})" class="btn btn-sm btn-outline-primary" title="Print Invoice">
+                                <i class="bi bi-printer"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('allOrdersTable').innerHTML = html;
+        } catch(err) {
+            console.error(err);
+            document.getElementById('allOrdersTable').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading orders</td></tr>';
+        }
+    }
+
+    function viewOrderDetails(orderId) {
+        const order = currentOrders.find(o => o.id === orderId);
+        if(!order) return;
+        
+        document.getElementById('modalOrderNumber').innerText = '#' + order.order_number;
+        document.getElementById('modalOrderDate').innerText = new Date(order.created_at).toLocaleString();
+        document.getElementById('modalOrderStatus').innerText = order.status.toUpperCase();
+        document.getElementById('modalOrderTotal').innerText = '₹' + order.total_amount;
+        
+        let itemsHtml = '';
+        order.items.forEach(item => {
+            const name = item.product ? item.product.name : 'Unknown Product';
+            itemsHtml += `
+            <tr>
+                <td>${name}</td>
+                <td>${item.quantity}</td>
+                <td>₹${item.price}</td>
+                <td>₹${(item.quantity * parseFloat(item.price)).toFixed(2)}</td>
+            </tr>
+            `;
+        });
+        document.getElementById('modalOrderItems').innerHTML = itemsHtml;
+        
+        const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+        modal.show();
+    }
+
+    async function closePayment(orderId, totalAmount, paidAmount, remainingAmount) {
+        const { value: inputAmount, isConfirmed } = await Swal.fire({
+            title: 'Record Payment',
+            html: `
+                <div class="text-start">
+                    <p class="mb-1 text-muted">Order Total: <strong class="text-dark">₹${parseFloat(totalAmount).toFixed(2)}</strong></p>
+                    <p class="mb-1 text-muted">Already Paid: <strong class="text-success">₹${parseFloat(paidAmount).toFixed(2)}</strong></p>
+                    <p class="mb-3 text-muted">Remaining Balance: <strong class="text-danger">₹${parseFloat(remainingAmount).toFixed(2)}</strong></p>
+                </div>
+            `,
+            input: 'text',
+            inputLabel: 'Enter amount received (or leave blank to mark as fully paid):',
+            inputPlaceholder: 'e.g. ' + parseFloat(remainingAmount).toFixed(2),
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Record Payment',
+            inputValidator: (value) => {
+                if (value.trim() !== '') {
+                    const amt = parseFloat(value);
+                    if (isNaN(amt) || amt <= 0) {
+                        return 'Please enter a valid amount greater than zero!';
+                    }
+                }
+            }
+        });
+
+        if (!isConfirmed) return;
+        
+        const payload = {};
+        if (inputAmount === undefined || inputAmount.trim() === '') {
+            payload.status = 'completed';
+        } else {
+            payload.payment_amount = parseFloat(inputAmount);
+        }
+        
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/orders/history/${orderId}/update_payment_status/`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) {
+                alert('Payment recorded successfully!');
+                loadAllOrders();
+                loadAnalytics();
+            } else {
+                alert('Failed to update payment');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error updating payment');
+        }
+    }
+
+    async function undoPayment(orderId) {
+        const result = await Swal.fire({
+            title: 'Undo Payment',
+            text: 'Are you sure you want to undo this payment? This will reset the payment status to Pending and clear any recorded payments for this order.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, undo payment!'
+        });
+        if (!result.isConfirmed) return;
+
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/orders/history/${orderId}/update_payment_status/`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: 'pending' })
+            });
+            if(res.ok) {
+                alert('Payment undone successfully!');
+                loadAllOrders();
+                loadAnalytics();
+            } else {
+                alert('Failed to undo payment');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error undoing payment');
+        }
+    }
+
+    async function updateOrderStatus(orderId, status) {
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(`/api/orders/history/${orderId}/update_status/`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: status })
+            });
+            if(!res.ok) {
+                alert('Failed to update status');
+                loadAllOrders(); // Revert UI on failure
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error updating status');
+            loadAllOrders();
+        }
+    }
+
+    async function downloadInvoice(orderId) {
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(`/api/orders/${orderId}/invoice/pdf/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Invoice_${orderId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert('Failed to download invoice.');
+            }
+        } catch(err) {
+            console.error(err);
+        }
+    }
+
+    async function exportOrdersExcel() {
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch('/api/orders/export/excel/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `AbinPharma_Orders.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert('Failed to export orders. Make sure you are authorized.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error exporting orders');
+        }
+    }
+
+    async function exportMedicinesExcel() {
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch('/api/inventory/products/export-excel/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `AbinPharma_Medicines_Export.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert('Failed to export medicines. Make sure you are authorized.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error exporting medicines');
+        }
+    }
+
+    async function importMedicinesExcel(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/inventory/products/import-excel/', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            if(res.ok) {
+                const data = await res.json();
+                alert(data.message || 'Medicines imported successfully!');
+                location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to import medicines.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error importing medicines');
+        } finally {
+            event.target.value = ''; // Reset file input
+        }
+    }
+
+    async function dangerDeleteAllMedicines() {
+        const result = await Swal.fire({
+            title: 'CRITICAL WARNING!',
+            text: 'Are you sure you want to completely delete ALL medicines from the system? This will delete all products, their batches, and CANNOT be undone!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, delete everything!'
+        });
+        if (!result.isConfirmed) return;
+
+        const { value: textConfirm } = await Swal.fire({
+            title: 'Confirm Destruction',
+            input: 'text',
+            inputLabel: 'Please type "DELETE ALL" to confirm this critical action:',
+            inputPlaceholder: 'DELETE ALL',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Confirm Delete',
+            inputValidator: (value) => {
+                if (value !== 'DELETE ALL') {
+                    return 'You must type "DELETE ALL" exactly!'
+                }
+            }
+        });
+
+        if (!textConfirm) return;
+
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/inventory/products/delete-all/', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if(res.ok) {
+                const data = await res.json();
+                alert(data.message || 'All medicines deleted successfully!');
+                location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to delete medicines.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error deleting medicines');
+        }
+    }
+
+    async function loadPendingDealers() {
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/accounts/admin/pending-dealers/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            
+            let html = '';
+            if(data.length === 0) {
+                html = '<tr><td colspan="2" class="text-center text-muted">No pending approvals</td></tr>';
+            } else {
+                data.forEach(dealer => {
+                    html += `
+                    <tr>
+                        <td class="fw-medium">${dealer.username}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success me-1" onclick="approveDealer(${dealer.id}, 'approve')"><i class="bi bi-check-lg"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="approveDealer(${dealer.id}, 'reject')"><i class="bi bi-x-lg"></i></button>
+                        </td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('pendingDealersTable').innerHTML = html;
+        } catch(err) {
+            console.error(err);
+            document.getElementById('pendingDealersTable').innerHTML = '<tr><td colspan="2" class="text-center text-danger">Error loading dealers</td></tr>';
+        }
+    }
+
+    async function approveDealer(id, action) {
+        const token = localStorage.getItem('access_token');
+        let credit_limit = 0;
+        if(action === 'approve') {
+            const { value: limitInput, isConfirmed } = await Swal.fire({
+                title: 'Approve Dealer',
+                input: 'text',
+                inputLabel: 'Enter credit limit for this dealer:',
+                inputValue: '50000',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Approve',
+                inputValidator: (value) => {
+                    const amt = parseFloat(value);
+                    if (isNaN(amt) || amt < 0) {
+                        return 'Please enter a valid credit limit!';
+                    }
+                }
+            });
+            if (!isConfirmed) return;
+            credit_limit = parseFloat(limitInput) || 0;
+        }
+        
+        try {
+            const res = await fetch(`/api/accounts/dealer/${id}/approve/`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action: action, credit_limit: credit_limit })
+            });
+            
+            if(res.ok) {
+                alert(`Dealer ${action}d successfully!`);
+                loadPendingDealers();
+            } else {
+                alert(`Failed to ${action} dealer`);
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error updating dealer status');
+        }
+    }
+
+    async function submitMedicine(event, saveAsDraft = false) {
+        if (event) event.preventDefault();
+        const form = document.getElementById('addMedicineForm');
+        const formData = new FormData(form);
+        const imageInput = form.querySelector('input[type="file"][name="image"]');
+        if (imageInput && imageInput.files.length === 0) {
+            formData.delete('image');
+        }
+        // Clean empty fields
+        for (const [key, value] of Array.from(formData.entries())) {
+            if (value === '') {
+                formData.delete(key);
+            }
+        }
+        formData.append('is_active', saveAsDraft ? 'false' : (document.getElementById('add_is_active').checked ? 'true' : 'false'));
+        formData.append('stock_status', 'out_of_stock');
+        
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch('/api/inventory/products/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                    // Do not set Content-Type, browser will set it with boundary for FormData
+                },
+                body: formData
+            });
+            
+            if(res.ok) {
+                alert('Medicine added successfully!');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addMedicineModal'));
+                modal.hide();
+                form.reset();
+            } else {
+                const data = await res.json();
+                alert('Failed to add medicine. ' + JSON.stringify(data));
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error adding medicine');
+        }
+    }
+
+    async function searchUsersForAdmin() {
+        const query = document.getElementById('adminUserSearchInput').value.trim();
+        if (query.length < 2) {
+            document.getElementById('adminUserListTable').innerHTML = '<tr><td colspan="5" class="text-center py-3 text-muted">Use the search bar above to lookup users.</td></tr>';
+            return;
+        }
+
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/accounts/admin/update-username/?q=${encodeURIComponent(query)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const users = await res.json();
+                window.adminSearchedUsers = users;
+                let html = '';
+                if (users.length === 0) {
+                    html = '<tr><td colspan="5" class="text-center py-3 text-muted">No users found.</td></tr>';
+                } else {
+                    users.forEach(u => {
+                        const name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'N/A';
+                        const roleBadge = u.role === 'dealer' ? '<span class="badge bg-info text-dark">Dealer</span>' : '<span class="badge bg-secondary">Customer</span>';
+                        html += `
+                        <tr>
+                            <td>${roleBadge}</td>
+                            <td class="fw-bold">${name}</td>
+                            <td>${u.email || 'N/A'}</td>
+                            <td><code class="fw-bold text-dark">${u.username}</code></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary-custom rounded-pill px-3" onclick="editCustomerProfile(${u.id})">
+                                    <i class="bi bi-pencil-square"></i> Edit Profile
+                                </button>
+                            </td>
+                        </tr>
+                        `;
+                    });
+                }
+                document.getElementById('adminUserListTable').innerHTML = html;
+            }
+        } catch (err) {
+            console.error('Error searching users:', err);
+        }
+    }
+
+    window.editCustomerProfile = function(userId) {
+        const user = (window.adminSearchedUsers || []).find(u => u.id == userId);
+        if (!user) return;
+
+        document.getElementById('adminEditUserId').value = user.id;
+        document.getElementById('adminEditUsername').value = user.username || '';
+        document.getElementById('adminEditEmail').value = user.email || '';
+        document.getElementById('adminEditFirstName').value = user.first_name || '';
+        document.getElementById('adminEditLastName').value = user.last_name || '';
+        document.getElementById('adminEditPhone').value = user.phone_number || '';
+
+        const dealerFields = document.getElementById('adminEditDealerFields');
+        if (user.role === 'dealer') {
+            dealerFields.classList.remove('d-none');
+            document.getElementById('adminEditCreditLimit').value = (user.profile && user.profile.credit_limit) ? user.profile.credit_limit : '0';
+            document.getElementById('adminEditAddress').value = (user.profile && user.profile.address) ? user.profile.address : '';
+        } else {
+            dealerFields.classList.add('d-none');
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('adminEditUserModal'));
+        modal.show();
+    }
+
+    async function saveCustomerProfileAdmin(event) {
+        event.preventDefault();
+        
+        const btn = document.getElementById('adminSaveProfileBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+        const userId = document.getElementById('adminEditUserId').value;
+        const payload = {
+            user_id: userId,
+            username: document.getElementById('adminEditUsername').value.trim(),
+            email: document.getElementById('adminEditEmail').value.trim(),
+            first_name: document.getElementById('adminEditFirstName').value.trim(),
+            last_name: document.getElementById('adminEditLastName').value.trim(),
+            phone_number: document.getElementById('adminEditPhone').value.trim()
+        };
+
+        const user = (window.adminSearchedUsers || []).find(u => u.id == userId);
+        if (user && user.role === 'dealer') {
+            payload.credit_limit = parseFloat(document.getElementById('adminEditCreditLimit').value) || 0;
+            payload.address = document.getElementById('adminEditAddress').value.trim();
+        }
+
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/accounts/admin/update-username/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert('Profile updated successfully!');
+                const modalEl = document.getElementById('adminEditUserModal');
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.hide();
+                searchUsersForAdmin();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to update profile');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error updating profile');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Save Profile Changes';
+        }
+    }
+</script>
+{% endblock %}

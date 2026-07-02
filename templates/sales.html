@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5 min-vh-100">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">Retail <span class="text-primary">Sales</span></h3>
+            <p class="text-muted small">Quick POS billing and sales history</p>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-4" id="salesTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active px-4 fw-bold" id="sales-tab" data-bs-toggle="pill" data-bs-target="#sales-bill" type="button" role="tab">Sales Bill</button>
+        </li>
+        <li class="nav-item ms-2" role="presentation">
+            <button class="nav-link px-4 fw-bold bg-light text-dark border" id="history-tab" data-bs-toggle="pill" data-bs-target="#sales-history" type="button" role="tab" onclick="loadSalesHistory()">Sales History</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="salesTabsContent">
+        
+        <!-- SALES BILLING TAB -->
+        <div class="tab-pane fade show active" id="sales-bill" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="glass-card p-4">
+                        <div class="row g-2 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label text-muted small fw-bold">Search Product</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" class="form-control border-start-0 ps-0" id="salesSearchInput" placeholder="Scan barcode or type name...">
+                                </div>
+                                <div id="salesSearchResults" class="list-group position-absolute w-100 shadow" style="z-index: 1000; max-height: 200px; overflow-y: auto; display: none;"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Customer Name</label>
+                                <input type="text" class="form-control" id="salesCustomerName" placeholder="Walk-in Customer">
+                            </div>
+                        </div>
+
+                        <div class="table-responsive" style="min-height: 300px;">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product Name</th>
+                                        <th width="120">Price</th>
+                                        <th width="150">Quantity</th>
+                                        <th width="120">Total</th>
+                                        <th width="50"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="salesTableBody">
+                                    <tr id="salesEmptyRow"><td colspan="5" class="text-center text-muted py-4">No items added to bill</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="glass-card p-4 position-sticky" style="top: 100px;">
+                        <h5 class="fw-bold mb-4 border-bottom pb-3">Bill Summary</h5>
+                        
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="text-muted">Total Items</span>
+                            <span class="fw-bold" id="salesTotalItems">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="text-muted">Sub Total</span>
+                            <span class="fw-bold">₹<span id="salesSubTotal">0.00</span></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-4 pb-3 border-bottom">
+                            <span class="text-muted">GST (12%)</span>
+                            <span class="fw-bold text-danger">+ ₹<span id="salesGst">0.00</span></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-4">
+                            <span class="fw-bold fs-5">Grand Total</span>
+                            <span class="fw-bold fs-4 text-success">₹<span id="salesGrandTotal">0.00</span></span>
+                        </div>
+                        
+                        <button class="btn btn-primary-custom w-100 py-3 mb-2" onclick="generateSalesBill()" id="btnGenerateSales">
+                            <i class="bi bi-receipt me-2"></i> Generate Bill
+                        </button>
+                        <button class="btn btn-outline-danger w-100" onclick="clearSalesBill()">Clear Bill</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SALES HISTORY TAB -->
+        <div class="tab-pane fade" id="sales-history" role="tabpanel">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                    <h5 class="fw-bold mb-0">Recent Sales & Customer Details</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small">Filter:</span>
+                        <select id="salesPaymentFilter" class="form-select form-select-sm" style="width: 150px;" onchange="filterSalesHistory()">
+                            <option value="">All Payments</option>
+                            <option value="completed">Closed</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order No.</th>
+                                <th>Date & Time</th>
+                                <th>Customer Name</th>
+                                <th>Total Amount</th>
+                                <th>Status</th>
+                                <th>Payment</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesHistoryTableBody">
+                            <tr><td colspan="7" class="text-center text-muted py-4">Loading sales history...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const token = localStorage.getItem('access_token');
+    if(!token || localStorage.getItem('user_role') !== 'admin') {
+        alert('Unauthorized access. Admin only.');
+        window.location.href = '/dashboard/';
+    }
+
+    let salesItems = [];
+    let allProducts = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/inventory/products/');
+            allProducts = await res.json();
+        } catch(err) { console.error(err); }
+    });
+
+    document.getElementById('salesSearchInput').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        const resultsBox = document.getElementById('salesSearchResults');
+        
+        if(query.length < 2) {
+            resultsBox.style.display = 'none';
+            return;
+        }
+
+        const matches = allProducts.filter(p => p.name.toLowerCase().includes(query) || (p.generic_name && p.generic_name.toLowerCase().includes(query)));
+        
+        if(matches.length > 0) {
+            let html = '';
+            matches.slice(0, 8).forEach(p => {
+                html += `<a href="#" class="list-group-item list-group-item-action" onclick="addSalesItem(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.wholesale_price}); return false;">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-bold">${p.name}</span>
+                                <span class="text-success fw-bold">₹${p.wholesale_price}</span>
+                            </div>
+                         </a>`;
+            });
+            resultsBox.innerHTML = html;
+            resultsBox.style.display = 'block';
+            resultsBox.parentElement.classList.add('position-relative');
+        } else {
+            resultsBox.innerHTML = '<div class="list-group-item text-muted">No products found</div>';
+            resultsBox.style.display = 'block';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if(e.target.id !== 'salesSearchInput' && document.getElementById('salesSearchResults')) {
+            document.getElementById('salesSearchResults').style.display = 'none';
+        }
+    });
+
+    function addSalesItem(id, name, price) {
+        const existing = salesItems.find(i => i.product_id === id);
+        if(existing) {
+            existing.quantity++;
+        } else {
+            salesItems.push({ product_id: id, name: name, price: price, quantity: 1 });
+        }
+        document.getElementById('salesSearchInput').value = '';
+        renderSalesTable();
+    }
+
+    function updateSalesQty(id, qty) {
+        const item = salesItems.find(i => i.product_id === id);
+        if(item) {
+            item.quantity = parseInt(qty) || 1;
+            renderSalesTable();
+        }
+    }
+
+    function removeSalesItem(id) {
+        salesItems = salesItems.filter(i => i.product_id !== id);
+        renderSalesTable();
+    }
+
+    function clearSalesBill() {
+        salesItems = [];
+        document.getElementById('salesCustomerName').value = '';
+        renderSalesTable();
+    }
+
+    function renderSalesTable() {
+        const tbody = document.getElementById('salesTableBody');
+        let subTotal = 0;
+        let totalItems = 0;
+
+        if(salesItems.length === 0) {
+            tbody.innerHTML = '<tr id="salesEmptyRow"><td colspan="5" class="text-center text-muted py-4">No items added to bill</td></tr>';
+        } else {
+            let html = '';
+            salesItems.forEach(item => {
+                const total = item.price * item.quantity;
+                subTotal += total;
+                totalItems += item.quantity;
+                html += `
+                <tr>
+                    <td class="fw-medium">${item.name}</td>
+                    <td>₹${item.price}</td>
+                    <td><input type="number" class="form-control form-control-sm text-center" value="${item.quantity}" min="1" onchange="updateSalesQty(${item.product_id}, this.value)"></td>
+                    <td class="fw-bold">₹${total.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-outline-danger" onclick="removeSalesItem(${item.product_id})"><i class="bi bi-trash"></i></button></td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        const gst = subTotal * 0.12;
+        const grandTotal = subTotal + gst;
+
+        document.getElementById('salesTotalItems').innerText = totalItems;
+        document.getElementById('salesSubTotal').innerText = subTotal.toFixed(2);
+        document.getElementById('salesGst').innerText = gst.toFixed(2);
+        document.getElementById('salesGrandTotal').innerText = grandTotal.toFixed(2);
+    }
+
+    async function generateSalesBill() {
+        if(salesItems.length === 0) {
+            alert('Add items to the bill first.');
+            return;
+        }
+
+        const btn = document.getElementById('btnGenerateSales');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Generating...';
+
+        const payload = {
+            customer_name: document.getElementById('salesCustomerName').value || 'Walk-in Customer',
+            items: salesItems.map(i => ({ product_id: i.product_id, quantity: i.quantity }))
+        };
+
+        try {
+            const res = await fetch('/api/orders/quick-bill/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if(res.ok) {
+                const order = await res.json();
+                alert(`Bill Generated Successfully! Order Number: ${order.order_number}`);
+                clearSalesBill();
+            } else {
+                alert('Error generating bill');
+            }
+        } catch(err) {
+            alert('Network Error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-receipt me-2"></i> Generate Bill';
+        }
+    }
+
+    let salesHistoryData = [];
+
+    async function loadSalesHistory() {
+        try {
+            const res = await fetch('/api/orders/history/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            salesHistoryData = await res.json();
+            renderSalesHistory(salesHistoryData);
+        } catch(err) {
+            console.error(err);
+            document.getElementById('salesHistoryTableBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Error loading history</td></tr>';
+        }
+    }
+
+    function renderSalesHistory(data) {
+        const tbody = document.getElementById('salesHistoryTableBody');
+        if(data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No sales recorded yet.</td></tr>';
+            return;
+        }
+
+        let html = '';
+        data.forEach(order => {
+            const dateObj = new Date(order.created_at);
+            const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            const isPaid = order.payment_status === 'completed';
+            const paymentBadge = isPaid ? 
+                `<span class="badge bg-success-light text-success border border-success px-2 py-1">Closed</span>` : 
+                `<span class="badge bg-danger-light text-danger border border-danger px-2 py-1">Pending</span>`;
+
+            html += `
+            <tr>
+                <td class="fw-bold text-primary">#${order.order_number}</td>
+                <td>${dateStr}</td>
+                <td class="fw-medium">${order.shipping_address || 'Walk-in Customer'}</td>
+                <td class="fw-bold text-success">₹${parseFloat(order.total_amount).toFixed(2)}</td>
+                <td><span class="badge bg-success">${order.status}</span></td>
+                <td>${paymentBadge}</td>
+                <td>
+                    <button onclick="downloadInvoice(${order.id})" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-printer"></i> Print
+                    </button>
+                </td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function filterSalesHistory() {
+        const filterVal = document.getElementById('salesPaymentFilter').value;
+        if (!filterVal) {
+            renderSalesHistory(salesHistoryData);
+        } else {
+            const filtered = salesHistoryData.filter(order => order.payment_status === filterVal);
+            renderSalesHistory(filtered);
+        }
+    }
+
+    async function downloadInvoice(orderId) {
+        try {
+            const res = await fetch(`/api/orders/${orderId}/invoice/pdf/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Invoice_${orderId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert('Failed to download invoice. Make sure you are authorized.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error downloading invoice');
+        }
+    }
+</script>
+{% endblock %}

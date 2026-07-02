@@ -1,0 +1,750 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Hide HTML5 Up/Down arrows from number input */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; 
+        margin: 0; 
+    }
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
+</style>
+<div class="container py-5 min-vh-100">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold mb-0">Shopping <span class="text-primary">Cart</span></h3>
+        <a href="{% url 'bulk-upload' %}" class="btn btn-outline-primary" id="bulkUploadBtn"><i class="bi bi-file-earmark-excel me-2"></i>Bulk CSV Upload</a>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="glass-card p-4 mb-4">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartItems">
+                            <tr><td colspan="4" class="text-center py-4">Loading cart...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="glass-card p-4 position-sticky" style="top: 100px;">
+                <h5 class="fw-bold mb-4">Order Summary</h5>
+                
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Subtotal</span>
+                    <span class="fw-bold" id="cartSubtotal">₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                    <span class="text-muted">Estimated GST</span>
+                    <span class="fw-bold" id="cartGst">₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2 text-danger d-none" id="couponRow">
+                    <span>Coupon Discount</span>
+                    <span class="fw-bold" id="cartDiscount">-₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
+                    <span class="text-muted">Delivery Charge</span>
+                    <span class="fw-bold" id="cartDelivery">₹0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-4">
+                    <span class="fw-bold fs-5">Total Amount</span>
+                    <span class="fw-bold fs-5 text-success" id="cartTotal">₹0.00</span>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="couponCode" placeholder="Coupon Code">
+                        <button class="btn btn-outline-secondary" onclick="applyCoupon()">Apply</button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-medium text-muted">Payment Method</label>
+                    <select class="form-select bg-light" id="paymentMethod">
+                        <option value="upi">UPI</option>
+                        <option value="card">Credit/Debit Card</option>
+                        <option value="netbanking">Net Banking</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="cod">Pay on Delivery / Pay Later</option>
+                        <option value="credit_account" id="creditAccountOption">Credit Account (Dealer Only)</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-medium text-muted">Contact Mobile Number</label>
+                    <input type="tel" class="form-control bg-light" id="shippingPhone" placeholder="Enter 10-digit mobile number" pattern="[0-9]{10}">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label fw-medium text-muted">Shipping Address</label>
+                    <textarea class="form-control bg-light" id="shippingAddress" rows="3" placeholder="Enter delivery address"></textarea>
+                </div>
+
+                <button class="btn btn-primary-custom w-100 py-3" onclick="startPaymentFlow()" id="checkoutBtn">
+                    Proceed to Checkout
+                </button>
+                <button class="btn btn-outline-secondary w-100 py-2.5 mt-2 fw-semibold" onclick="saveOrderAsDraft()" id="saveDraftBtn">
+                    <i class="bi bi-file-earmark-plus me-1"></i> Save as Draft
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Past Purchases / Purchase History Section -->
+    <div class="row mt-5 pt-4 border-top">
+        <div class="col-12">
+            <h4 class="fw-bold mb-4"><i class="bi bi-clock-history text-primary me-2"></i>My Purchase History</h4>
+            <div class="glass-card p-4">
+                <div class="table-responsive">
+                    <table class="table align-middle table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date</th>
+                                <th>Total Amount</th>
+                                <th>Order Status</th>
+                                <th>Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cartPurchaseHistoryBody">
+                            <tr><td colspan="5" class="text-center py-4">Loading past purchases...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Simulation Modal -->
+<div class="modal fade" id="paymentSimulationModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0 shadow-lg">
+            <div class="modal-header border-bottom border-light pb-2">
+                <h5 class="modal-title fw-bold text-dark" id="paymentSimTitle">Complete Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" id="closePaymentSimBtn"></button>
+            </div>
+            <div class="modal-body p-4" id="paymentSimBody">
+                <!-- Dynamic simulator container -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Items Details Modal -->
+<div class="modal fade" id="orderItemsModal">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header border-bottom border-light pb-2">
+                <h5 class="modal-title fw-bold" id="orderItemsModalTitle">Order Items</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Batch</th>
+                                <th>Unit Price</th>
+                                <th>Qty</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderItemsModalBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const token = localStorage.getItem('access_token');
+    const role = localStorage.getItem('user_role');
+    if(!token) {
+        window.location.href = '/login/';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCart();
+        loadProfileForCheckout();
+        loadPurchaseHistory();
+        if(role === 'customer') {
+            const bulkBtn = document.getElementById('bulkUploadBtn');
+            if(bulkBtn) bulkBtn.style.display = 'none';
+            const creditOpt = document.getElementById('creditAccountOption');
+            if(creditOpt) creditOpt.style.display = 'none';
+        }
+    });
+
+    async function loadProfileForCheckout() {
+        try {
+            const res = await fetch('/api/accounts/profile/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.ok) {
+                const data = await res.json();
+                const phoneInput = document.getElementById('shippingPhone');
+                if (phoneInput && data.phone_number) {
+                    phoneInput.value = data.phone_number;
+                }
+                const addrInput = document.getElementById('shippingAddress');
+                if (addrInput && data.profile && data.profile.address) {
+                    addrInput.value = data.profile.address;
+                }
+            }
+        } catch(err) {
+            console.error('Error fetching user profile:', err);
+        }
+    }
+
+    async function loadCart() {
+        try {
+            const res = await fetch('/api/orders/cart/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            
+            let html = '';
+            let subtotal = 0;
+
+            if(!data.items || data.items.length === 0) {
+                html = '<tr><td colspan="4" class="text-center py-5 text-muted">Your cart is empty. <br><a href="/products/" class="btn btn-primary-custom mt-3">Browse Products</a></td></tr>';
+            } else {
+                data.items.forEach(item => {
+                    const itemTotal = item.product.wholesale_price * item.quantity;
+                    subtotal += itemTotal;
+                    html += `
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-white rounded border overflow-hidden p-1 me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; flex-shrink: 0;">
+                                    <img src="${item.product.image || 'https://via.placeholder.com/50'}" class="w-100 h-100 object-fit-contain" alt="${item.product.name}">
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold">${item.product.name}</h6>
+                                    <small class="text-muted">${item.product.generic_name || 'Generic'}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>₹${parseFloat(item.product.wholesale_price).toFixed(2)}</td>
+                        <td>
+                            <div class="input-group input-group-sm rounded-pill overflow-hidden border" style="max-width: 110px;">
+                                <button class="btn btn-light border-0 px-2" type="button" onclick="updateQuantity(${item.product.id}, ${item.quantity - 1})"><i class="bi bi-dash"></i></button>
+                                <input type="number" class="form-control text-center border-0 bg-white fw-bold shadow-none" value="${item.quantity}" min="1" onchange="updateQuantity(${item.product.id}, this.value)" style="padding: 2px 0; -moz-appearance: textfield;">
+                                <button class="btn btn-light border-0 px-2" type="button" onclick="updateQuantity(${item.product.id}, ${item.quantity + 1})"><i class="bi bi-plus"></i></button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-success">₹${itemTotal.toFixed(2)}</span>
+                                <button onclick="removeItem(${item.product.id})" class="btn text-danger border-0 bg-transparent ms-3" title="Remove Item">
+                                    <i class="bi bi-trash fs-5"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    `;
+                });
+            }
+            
+            document.getElementById('cartItems').innerHTML = html;
+            
+            const gst = subtotal * 0.12; // Flat 12% mock GST
+            const delivery = subtotal < 1000 && subtotal > 0 ? 50 : 0;
+            const total = subtotal + gst + delivery;
+            
+            document.getElementById('cartSubtotal').innerText = '₹' + subtotal.toFixed(2);
+            document.getElementById('cartGst').innerText = '₹' + gst.toFixed(2);
+            document.getElementById('cartDelivery').innerText = delivery > 0 ? '₹' + delivery.toFixed(2) : 'Free';
+            document.getElementById('cartTotal').innerText = '₹' + total.toFixed(2);
+
+        } catch (err) {
+            document.getElementById('cartItems').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error loading cart</td></tr>';
+        }
+    }
+
+    async function updateQuantity(productId, newQty) {
+        newQty = parseInt(newQty);
+        if (isNaN(newQty) || newQty <= 0) {
+            if (newQty === 0) {
+                removeItem(productId);
+                return;
+            }
+            loadCart();
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/orders/cart/', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ product_id: productId, quantity: newQty })
+            });
+            if (res.ok) {
+                loadCart();
+            } else {
+                showToast('Failed to update quantity.', 'danger');
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function removeItem(productId) {
+        const result = await Swal.fire({
+            title: 'Remove Item',
+            text: 'Are you sure you want to remove this item from your cart?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, remove it!'
+        });
+        if (!result.isConfirmed) return;
+        try {
+            const res = await fetch('/api/orders/cart/', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ product_id: productId })
+            });
+            if (res.ok) {
+                loadCart();
+            } else {
+                showToast('Failed to remove item.', 'danger');
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    
+    function applyCoupon() {
+        const code = document.getElementById('couponCode').value;
+        if(code) {
+            document.getElementById('couponRow').classList.remove('d-none');
+            document.getElementById('cartDiscount').innerText = '-₹100.00'; // Mock discount
+        }
+    }
+
+    function startPaymentFlow() {
+        const phone = document.getElementById('shippingPhone').value.trim();
+        if(!phone) {
+            showToast('Please enter your contact mobile number', 'warning');
+            return;
+        }
+        const phonePattern = /^[0-9]{10}$/;
+        if(!phonePattern.test(phone)) {
+            showToast('Please enter a valid 10-digit mobile number', 'warning');
+            return;
+        }
+
+        const address = document.getElementById('shippingAddress').value.trim();
+        if(!address) {
+            showToast('Please enter shipping address', 'warning');
+            return;
+        }
+
+        const totalText = document.getElementById('cartTotal').innerText;
+        const totalVal = parseFloat(totalText.replace(/[^\d.-]/g, '')) || 0;
+        if (totalVal <= 0) {
+            showToast('Your cart is empty', 'warning');
+            return;
+        }
+
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        const modalEl = document.getElementById('paymentSimulationModal');
+        const bodyEl = document.getElementById('paymentSimBody');
+        const titleEl = document.getElementById('paymentSimTitle');
+
+        let html = '';
+
+        // Reset close button visibility
+        const closeBtn = document.getElementById('closePaymentSimBtn');
+        if (closeBtn) closeBtn.style.display = 'block';
+
+        if (paymentMethod === 'upi') {
+            titleEl.innerText = 'UPI Payment';
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=abinpharma@okaxis%26pn=Abin%20Pharma%26am=${totalVal.toFixed(2)}%26cu=INR`;
+            html = `
+                <div class="text-center">
+                    <p class="mb-3 fw-semibold text-muted">Scan the QR code below to pay using any UPI App</p>
+                    <div class="d-inline-block p-2 bg-white rounded border mb-3">
+                        <img src="${qrUrl}" alt="UPI QR Code" style="width: 180px; height: 180px;">
+                    </div>
+                    <h4 class="fw-bold text-success mb-3">₹${totalVal.toFixed(2)}</h4>
+                    
+                    <div class="border-top pt-3 mt-3">
+                        <p class="small text-muted mb-2">Or enter your UPI ID to pay</p>
+                        <div class="input-group mb-3">
+                            <input type="text" id="simUpiId" class="form-control" placeholder="username@upi">
+                            <button class="btn btn-primary-custom" onclick="processSimulatedPayment()">Pay Now</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (paymentMethod === 'card') {
+            titleEl.innerText = 'Card Payment';
+            html = `
+                <div>
+                    <h5 class="fw-bold text-success text-center mb-3">₹${totalVal.toFixed(2)}</h5>
+                    <form onsubmit="event.preventDefault(); processSimulatedPayment();">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted">Cardholder Name</label>
+                            <input type="text" class="form-control" required placeholder="Name on card">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted">Card Number</label>
+                            <input type="text" class="form-control" required maxlength="19" placeholder="4111 2222 3333 4444" oninput="this.value = this.value.replace(/[^\\d]/g, '').replace(/(.{4})/g, '$1 ').trim()">
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label small fw-semibold text-muted">Expiry Date</label>
+                                <input type="text" class="form-control" required maxlength="5" placeholder="MM/YY" oninput="this.value = this.value.replace(/[^\\d]/g, '').replace(/(.{2})/g, '$1/').replace(/\\/$/, '').trim()">
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label small fw-semibold text-muted">CVV</label>
+                                <input type="password" class="form-control" required maxlength="3" placeholder="***" oninput="this.value = this.value.replace(/[^\\d]/g, '')">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2.5 mt-2 fw-semibold">Pay ₹${totalVal.toFixed(2)}</button>
+                    </form>
+                </div>
+            `;
+        } else if (paymentMethod === 'netbanking') {
+            titleEl.innerText = 'Net Banking';
+            html = `
+                <div>
+                    <h5 class="fw-bold text-success text-center mb-3">₹${totalVal.toFixed(2)}</h5>
+                    <p class="small text-muted mb-2">Select your bank:</p>
+                    <div class="list-group mb-3">
+                        <label class="list-group-item d-flex align-items-center gap-2 py-2.5">
+                            <input class="form-check-input me-1" type="radio" name="simBank" value="sbi" checked>
+                            <span class="fw-medium">State Bank of India</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2 py-2.5">
+                            <input class="form-check-input me-1" type="radio" name="simBank" value="hdfc">
+                            <span class="fw-medium">HDFC Bank</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2 py-2.5">
+                            <input class="form-check-input me-1" type="radio" name="simBank" value="icici">
+                            <span class="fw-medium">ICICI Bank</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2 py-2.5">
+                            <input class="form-check-input me-1" type="radio" name="simBank" value="axis">
+                            <span class="fw-medium">Axis Bank</span>
+                        </label>
+                    </div>
+                    <button class="btn btn-primary-custom w-100 py-2.5 fw-semibold" onclick="processSimulatedPayment()">Proceed to Bank Portal</button>
+                </div>
+            `;
+        } else if (paymentMethod === 'bank_transfer') {
+            titleEl.innerText = 'Bank Transfer (NEFT/IMPS)';
+            html = `
+                <div>
+                    <h5 class="fw-bold text-success text-center mb-3">₹${totalVal.toFixed(2)}</h5>
+                    <div class="bg-light p-3 rounded border mb-3 small">
+                        <div class="d-flex justify-content-between mb-1"><strong>Account Name:</strong> <span>Abin Pharma Pvt Ltd</span></div>
+                        <div class="d-flex justify-content-between mb-1"><strong>Bank Name:</strong> <span>State Bank of India</span></div>
+                        <div class="d-flex justify-content-between mb-1"><strong>Account Number:</strong> <span>39201938592</span></div>
+                        <div class="d-flex justify-content-between mb-1"><strong>IFSC Code:</strong> <span>SBIN0004562</span></div>
+                        <div class="d-flex justify-content-between"><strong>Branch:</strong> <span>Cochin Medical City</span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted">Transaction UTR / Reference Number</label>
+                        <input type="text" id="simUtr" class="form-control" placeholder="Enter 12-digit UTR number" required>
+                    </div>
+                    <button class="btn btn-primary-custom w-100 py-2.5 fw-semibold" onclick="validateUtrAndPay()">Confirm Bank Transfer</button>
+                </div>
+            `;
+        } else if (paymentMethod === 'cod') {
+            titleEl.innerText = 'Pay on Delivery / Pay Later';
+            html = `
+                <div class="text-center py-2">
+                    <i class="bi bi-truck fs-1 text-primary mb-3"></i>
+                    <h5 class="fw-bold text-success mb-3">₹${totalVal.toFixed(2)}</h5>
+                    <p class="small text-muted mb-4">No upfront payment is required. You can pay via cash, card, or UPI when your shipment is delivered.</p>
+                    <button class="btn btn-primary-custom w-100 py-2.5 fw-semibold" onclick="processSimulatedPayment()">Confirm & Place Order</button>
+                </div>
+            `;
+        } else if (paymentMethod === 'credit_account') {
+            titleEl.innerText = 'Dealer Credit Account';
+            html = `
+                <div class="text-center py-2">
+                    <i class="bi bi-wallet2 fs-1 text-primary mb-3"></i>
+                    <h5 class="fw-bold text-success mb-3">₹${totalVal.toFixed(2)}</h5>
+                    <p class="small text-muted mb-4">The order amount will be debited directly from your dealer credit line.</p>
+                    <button class="btn btn-primary-custom w-100 py-2.5 fw-semibold" onclick="processSimulatedPayment()">Pay using Credit Line</button>
+                </div>
+            `;
+        }
+
+        bodyEl.innerHTML = html;
+        const myModal = new bootstrap.Modal(modalEl);
+        myModal.show();
+    }
+
+    window.validateUtrAndPay = function() {
+        const utr = document.getElementById('simUtr').value.trim();
+        if (!utr) {
+            alert('Please enter your transaction Reference UTR Number');
+            return;
+        }
+        processSimulatedPayment();
+    }
+
+    window.processSimulatedPayment = function() {
+        const closeBtn = document.getElementById('closePaymentSimBtn');
+        if (closeBtn) closeBtn.style.display = 'none';
+
+        const bodyEl = document.getElementById('paymentSimBody');
+        bodyEl.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                <h5 class="fw-bold mb-1">Verifying Transaction...</h5>
+                <p class="text-muted small mb-0">Please do not close this window or refresh the page.</p>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            bodyEl.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center mb-3" style="width: 4rem; height: 4rem;">
+                        <i class="bi bi-check-lg fs-1"></i>
+                    </div>
+                    <h5 class="fw-bold text-success mb-1">Payment Successful!</h5>
+                    <p class="text-muted small mb-0">Creating your purchase order...</p>
+                </div>
+            `;
+            setTimeout(() => {
+                checkout();
+            }, 1000);
+        }, 1500);
+    }
+
+    async function checkout() {
+        const phone = document.getElementById('shippingPhone').value.trim();
+        const address = document.getElementById('shippingAddress').value.trim();
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        const couponCode = document.getElementById('couponCode').value;
+
+        // Dismiss modal
+        const modalEl = document.getElementById('paymentSimulationModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+
+        const btn = document.getElementById('checkoutBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+
+        try {
+            const res = await fetch('/api/orders/checkout/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ 
+                    shipping_address: address,
+                    phone: phone,
+                    payment_method: paymentMethod,
+                    coupon_code: couponCode
+                })
+            });
+
+            if(res.ok) {
+                showToast('Order placed successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = role === 'customer' ? '/shop/' : '/dashboard/';
+                }, 1500);
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Checkout failed', 'danger');
+                btn.disabled = false;
+                btn.innerHTML = 'Proceed to Checkout';
+            }
+        } catch (err) {
+            showToast('Network error while placing order.', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = 'Proceed to Checkout';
+        }
+    }
+
+    async function saveOrderAsDraft() {
+        const phone = document.getElementById('shippingPhone') ? document.getElementById('shippingPhone').value.trim() : '';
+        const address = document.getElementById('shippingAddress').value.trim();
+        if(!address) {
+            showToast('Shipping address is required to save a draft order.', 'danger');
+            return;
+        }
+
+        const btn = document.getElementById('saveDraftBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+
+        try {
+            const res = await fetch('/api/orders/checkout/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ 
+                    shipping_address: address,
+                    phone: phone,
+                    payment_method: 'draft',
+                    coupon_code: document.getElementById('couponCode') ? document.getElementById('couponCode').value : ''
+                })
+            });
+
+            if(res.ok) {
+                showToast('Order saved as draft successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = role === 'customer' ? '/shop/' : '/profile/';
+                }, 1500);
+            } else {
+                const data = await res.json();
+                showToast(data.error || 'Failed to save draft order.', 'danger');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-file-earmark-plus me-1"></i> Save as Draft';
+            }
+        } catch (err) {
+            showToast('Network error while saving draft.', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-file-earmark-plus me-1"></i> Save as Draft';
+        }
+    }
+
+
+
+    function showToast(message, type = 'success') {
+        const toastEl = document.getElementById('cartToast');
+        const toastMsg = document.getElementById('toastMessage');
+        const toastIcon = document.getElementById('toastIcon');
+        
+        if (toastEl && toastMsg) {
+            toastMsg.innerText = message;
+            
+            toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'text-dark');
+            if (toastIcon) toastIcon.className = 'bi fs-5';
+            
+            if (type === 'success') {
+                toastEl.classList.add('bg-success');
+                if (toastIcon) toastIcon.classList.add('bi-check-circle-fill');
+            } else if (type === 'danger') {
+                toastEl.classList.add('bg-danger');
+                if (toastIcon) toastIcon.classList.add('bi-exclamation-octagon-fill');
+            } else {
+                toastEl.classList.add('bg-warning', 'text-dark');
+                if (toastIcon) toastIcon.classList.add('bi-exclamation-triangle-fill');
+            }
+            
+            const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+            toast.show();
+        }
+    }
+
+    async function loadPurchaseHistory() {
+        try {
+            const res = await fetch('/api/orders/history/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                window.customerOrders = data;
+                let html = '';
+                
+                if (data.length === 0) {
+                    html = '<tr><td colspan="5" class="text-center py-4 text-muted">You have no past purchases.</td></tr>';
+                } else {
+                    data.forEach(order => {
+                        const date = new Date(order.created_at).toLocaleDateString('en-IN');
+                        let badgeClass = 'bg-secondary';
+                        if (order.status === 'delivered') badgeClass = 'bg-success';
+                        else if (order.status === 'pending') badgeClass = 'bg-warning text-dark';
+                        else if (order.status === 'shipped') badgeClass = 'bg-info text-dark';
+                        else if (order.status === 'packed') badgeClass = 'bg-primary';
+
+                        const isPaid = order.payment_status === 'completed';
+                        const paymentBadge = isPaid ?
+                            `<span class="badge bg-success-light text-success border border-success px-2 py-1">Closed</span>` :
+                            `<span class="badge bg-danger-light text-danger border border-danger px-2 py-1">Pending</span>`;
+
+                        html += `
+                        <tr>
+                            <td class="fw-bold"><a href="#" onclick="showOrderItemsModal(${order.id}); return false;" class="text-primary text-decoration-none">#${order.order_number}</a></td>
+                            <td>${date}</td>
+                            <td class="fw-bold text-success">₹${parseFloat(order.total_amount).toFixed(2)}</td>
+                            <td><span class="badge ${badgeClass}">${order.status.toUpperCase()}</span></td>
+                            <td>${paymentBadge}</td>
+                        </tr>
+                        `;
+                    });
+                }
+                document.getElementById('cartPurchaseHistoryBody').innerHTML = html;
+            } else {
+                document.getElementById('cartPurchaseHistoryBody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load history</td></tr>';
+            }
+        } catch (err) {
+            console.error(err);
+            document.getElementById('cartPurchaseHistoryBody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading history</td></tr>';
+        }
+    }
+
+    window.showOrderItemsModal = function(orderId) {
+        const order = (window.customerOrders || []).find(o => o.id == orderId);
+        if (!order) return;
+        
+        document.getElementById('orderItemsModalTitle').innerText = `Order #${order.order_number} Items`;
+        
+        let html = '';
+        if (!order.items || order.items.length === 0) {
+            html = '<tr><td colspan="5" class="text-center text-muted py-4">No items found in this order.</td></tr>';
+        } else {
+            order.items.forEach(item => {
+                const price = parseFloat(item.price).toFixed(2);
+                const gst = parseFloat(item.gst_amount || 0).toFixed(2);
+                const subtotal = (parseFloat(item.price) * item.quantity);
+                const total = (parseFloat(subtotal) + parseFloat(gst)).toFixed(2);
+                const prodName = (item.product && item.product.name) ? item.product.name : 'Product';
+                html += `
+                <tr>
+                    <td class="fw-bold text-dark">${prodName}</td>
+                    <td><span class="badge bg-secondary-light text-secondary border border-secondary px-2">${item.batch_number || 'N/A'}</span></td>
+                    <td>₹${price}</td>
+                    <td>${item.quantity}</td>
+                    <td class="fw-bold text-success">₹${total} <small class="text-muted d-block fw-normal" style="font-size:0.7rem;">(GST: ₹${gst})</small></td>
+                </tr>
+                `;
+            });
+        }
+        document.getElementById('orderItemsModalBody').innerHTML = html;
+        
+        const modal = new bootstrap.Modal(document.getElementById('orderItemsModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

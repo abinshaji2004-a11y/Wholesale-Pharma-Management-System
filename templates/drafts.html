@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if not user.is_authenticated or user.role != 'admin' %}
+<div class="container py-5 text-center min-vh-100 d-flex flex-column justify-content-center align-items-center">
+    <i class="bi bi-shield-lock text-danger" style="font-size: 4rem;"></i>
+    <h2 class="fw-bold mt-3">Access Denied</h2>
+    <p class="text-muted fs-5">Only administrators can access the draft medicines database.</p>
+    <a href="{% url 'home' %}" class="btn btn-primary-custom mt-3 px-4 py-2 rounded-pill">Return to Home</a>
+</div>
+{% else %}
+<div class="container py-5">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-6">
+            <h2 class="fw-bold">Draft <span class="text-warning">Medicines</span> <span class="badge bg-warning text-dark fs-6 ms-2 align-middle" id="draft-count-badge" style="display: none;">0 Drafts</span></h2>
+            <p class="text-muted">Review, edit, and publish medicines that are currently saved as drafts.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <button class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#addMedicineModal"><i class="bi bi-plus-circle"></i> Add New Medicine</button>
+            <a href="{% url 'products' %}" class="btn btn-outline-primary ms-2"><i class="bi bi-arrow-left"></i> Back to Catalog</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Product Grid -->
+        <div class="col-lg-12">
+            <div class="row g-4" id="products-container">
+                <!-- Products will be loaded here via JS -->
+                <div class="col-12 text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Medicine Modal -->
+<div class="modal fade" id="addMedicineModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content glass-card border-0">
+      <div class="modal-header border-bottom border-light">
+        <h5 class="modal-title fw-bold">Add New Medicine</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="addMedicineForm" onsubmit="submitMedicine(event)">
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Product Name</label><input type="text" class="form-control" name="name" required></div>
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Generic Name</label><input type="text" class="form-control" name="generic_name"></div>
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Category ID</label><input type="number" class="form-control" name="category_id"></div>
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Brand ID</label><input type="number" class="form-control" name="brand_id"></div>
+                <div class="col-md-4"><label class="form-label text-muted small fw-bold">Pack Size</label><input type="text" class="form-control" name="pack_size"></div>
+                <div class="col-md-4"><label class="form-label text-muted small fw-bold">MRP (₹)</label><input type="number" step="0.01" class="form-control" name="mrp"></div>
+                <div class="col-md-4"><label class="form-label text-muted small fw-bold">Wholesale Price (₹)</label><input type="number" step="0.01" class="form-control" name="wholesale_price"></div>
+                <div class="col-md-4"><label class="form-label text-muted small fw-bold">Initial Batch No.</label><input type="text" class="form-control" name="batch_number" placeholder="e.g. B123"></div>
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Expiry Date</label><input type="date" class="form-control" name="expiry_date"></div>
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Initial Stock Qty</label><input type="number" class="form-control" name="stock_quantity" value="0" min="0"></div>
+                <div class="col-12"><label class="form-label text-muted small fw-bold">Product Image</label><input type="file" class="form-control" name="image" accept="image/*"></div>
+                <div class="col-12">
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="add_is_active">
+                        <label class="form-check-label fw-bold text-muted small" for="add_is_active">Make Active (Uncheck to save as Draft)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-end">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-secondary px-4 ms-2 fw-semibold" onclick="submitMedicine(null, true)"><i class="bi bi-file-earmark-plus"></i> Save as Draft</button>
+                <button type="submit" class="btn btn-primary px-4 ms-2 fw-semibold"><i class="bi bi-check-circle"></i> Save Product</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Medicine Modal -->
+<div class="modal fade" id="editMedicineModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content glass-card border-0">
+      <div class="modal-header border-bottom border-light">
+        <h5 class="modal-title fw-bold">Edit Medicine</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="editMedicineForm" onsubmit="submitEditMedicine(event)">
+            <input type="hidden" id="edit_id" name="id">
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Product Name</label><input type="text" class="form-control" id="edit_name" name="name" required></div>
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Generic Name</label><input type="text" class="form-control" id="edit_generic_name" name="generic_name"></div>
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Category ID</label><input type="number" class="form-control" id="edit_category_id" name="category_id"></div>
+                <div class="col-md-6"><label class="form-label text-muted small fw-bold">Brand ID</label><input type="number" class="form-control" id="edit_brand_id" name="brand_id"></div>
+                <div class="col-md-4"><label class="form-label text-muted small fw-bold">Pack Size</label><input type="text" class="form-control" id="edit_pack_size" name="pack_size"></div>
+                <div class="col-md-4"><label class="form-label text-muted small fw-bold">MRP (₹)</label><input type="number" step="0.01" class="form-control" id="edit_mrp" name="mrp"></div>
+                <div class="col-md-4"><label class="form-label text-muted small fw-bold">Wholesale Price (₹)</label><input type="number" step="0.01" class="form-control" id="edit_wholesale_price" name="wholesale_price"></div>
+                <div class="col-12"><label class="form-label text-muted small fw-bold">Product Image (Leave blank to keep existing)</label><input type="file" class="form-control" name="image" accept="image/*"></div>
+                <div class="col-12">
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="edit_is_active">
+                        <label class="form-check-label fw-bold text-muted small" for="edit_is_active">Make Active (Uncheck to save as Draft)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-end">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary px-4 fw-semibold"><i class="bi bi-check-circle"></i> Save Changes</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProducts();
+    });
+
+    async function loadProducts() {
+        const container = document.getElementById('products-container');
+        container.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>';
+
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch('/api/inventory/products/?is_active=false', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            
+            if(data.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center py-5"><p class="text-muted">No draft products found.</p></div>';
+                return;
+            }
+
+            let html = '';
+            data.forEach(p => {
+                let stockBadge = '';
+                if(p.total_stock > 20) stockBadge = `<span class="badge bg-success position-absolute top-0 end-0 m-3">In Stock (${p.total_stock})</span>`;
+                else if(p.total_stock > 0) stockBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 m-3">Low Stock (${p.total_stock})</span>`;
+                else stockBadge = '<span class="badge bg-danger position-absolute top-0 end-0 m-3">Out of Stock</span>';
+
+                const packSizeHtml = p.pack_size ? `<small class="text-muted d-block mb-1"><i class="bi bi-box me-1"></i>${p.pack_size}</small>` : '';
+                const manufacturerHtml = p.manufacturer ? `<small class="text-muted d-block mb-2"><i class="bi bi-building me-1"></i>Manufacturer ID: ${p.manufacturer}</small>` : '';
+                const imageHtml = p.image ? `<img src="${p.image}?v=${new Date().getTime()}" class="card-img-top p-3" alt="${p.name}" style="height: 200px; object-fit: contain;">` : '<div class="bg-light text-center py-5"><i class="bi bi-image text-muted" style="font-size: 4rem;"></i></div>';
+
+                html += `
+                <div class="col-md-4 col-sm-6 fade-in-up">
+                    <div class="glass-card h-100 position-relative overflow-hidden border border-warning border-3">
+                        ${stockBadge}
+                        <span class="badge bg-secondary position-absolute top-0 start-0 m-3"><i class="bi bi-file-earmark-lock me-1"></i>Draft</span>
+                        ${imageHtml}
+                        <div class="p-4 pt-2">
+                            <div class="text-muted small mb-1">${p.category ? p.category.name : 'General'}</div>
+                            <h5 class="fw-bold text-dark mb-1">${p.name}</h5>
+                            ${p.generic_name ? `<small class="text-muted d-block mb-2">${p.generic_name}</small>` : ''}
+                            ${packSizeHtml}
+                            ${manufacturerHtml}
+                            
+                            <!-- Batches & Expiry Dates -->
+                            <div class="mt-2 mb-2">
+                                <span class="small text-muted d-block mb-1 fw-bold">Batches & Expiry:</span>
+                                ${p.batches && p.batches.length > 0 ? 
+                                    p.batches.map(b => `
+                                        <div class="d-flex justify-content-between align-items-center mb-1 p-1 bg-light rounded border" style="font-size: 0.75rem;">
+                                            <span><i class="bi bi-clock-history text-danger me-1"></i>${b.batch_number}</span>
+                                            <span class="text-muted">Exp: ${b.expiry_date}</span>
+                                            <span class="badge bg-secondary">${b.stock_quantity} Qty</span>
+                                        </div>
+                                    `).join('') 
+                                    : '<span class="text-muted small">No active batches available.</span>'
+                                }
+                            </div>
+                            
+                            <div class="mt-3 pt-3 border-top">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small">MRP: <del>₹${p.mrp ? parseFloat(p.mrp).toFixed(2) : '0.00'}</del></span>
+                                    <span class="fw-bold text-success fs-5">₹${p.wholesale_price ? parseFloat(p.wholesale_price).toFixed(2) : '0.00'}</span>
+                                </div>
+                                <div class="text-end text-muted" style="font-size:0.75rem;">Wholesale Price</div>
+                            </div>
+                            <button class="btn btn-outline-secondary w-100 mt-3 fw-bold" onclick="openEditModal(${p.id}, '${(p.name||'').replace(/'/g, "\\'")}', '${(p.generic_name||'').replace(/'/g, "\\'")}', ${p.category ? p.category.id : 'null'}, ${p.brand ? p.brand.id : 'null'}, '${(p.pack_size||'').replace(/'/g, "\\'")}', ${p.mrp || 'null'}, ${p.wholesale_price || 'null'}, ${p.is_active})"><i class="bi bi-pencil"></i> Edit & Publish</button>
+                            <button class="btn btn-outline-danger w-100 mt-2 fw-bold" onclick="deleteMedicine(${p.id})"><i class="bi bi-trash"></i> Delete Medicine</button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        } catch (err) {
+            container.innerHTML = '<div class="col-12 text-center py-5"><p class="text-danger">Failed to load draft medicines.</p></div>';
+        }
+    }
+
+    function openEditModal(id, name, generic_name, cat_id, brand_id, pack, mrp, wp, is_active) {
+        document.getElementById('edit_id').value = id;
+        document.getElementById('edit_name').value = name || '';
+        document.getElementById('edit_generic_name').value = generic_name || '';
+        document.getElementById('edit_category_id').value = cat_id || '';
+        document.getElementById('edit_brand_id').value = brand_id || '';
+        document.getElementById('edit_pack_size').value = pack || '';
+        document.getElementById('edit_mrp').value = mrp || '';
+        document.getElementById('edit_wholesale_price').value = wp || '';
+        document.getElementById('edit_is_active').checked = is_active;
+        
+        const editModal = new bootstrap.Modal(document.getElementById('editMedicineModal'));
+        editModal.show();
+    }
+
+    async function submitMedicine(event, saveAsDraft = false) {
+        if (event) event.preventDefault();
+        const form = document.getElementById('addMedicineForm');
+        const formData = new FormData(form);
+        const imageInput = form.querySelector('input[type="file"][name="image"]');
+        if (imageInput && imageInput.files.length === 0) {
+            formData.delete('image');
+        }
+        for (const [key, value] of Array.from(formData.entries())) {
+            if (value === '') {
+                formData.delete(key);
+            }
+        }
+        formData.append('is_active', saveAsDraft ? 'false' : (document.getElementById('add_is_active').checked ? 'true' : 'false'));
+        formData.append('stock_status', 'out_of_stock');
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch('/api/inventory/products/', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            if(res.ok) {
+                alert('Medicine added successfully!');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addMedicineModal'));
+                modal.hide();
+                form.reset();
+                loadProducts();
+            } else {
+                const data = await res.json();
+                alert('Failed: ' + JSON.stringify(data));
+            }
+        } catch(err) {
+            alert('Error adding medicine');
+        }
+    }
+
+    async function submitEditMedicine(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const imageInput = form.querySelector('input[type="file"][name="image"]');
+        if (imageInput && imageInput.files.length === 0) {
+            formData.delete('image');
+        }
+        for (const [key, value] of Array.from(formData.entries())) {
+            if (value === '') {
+                formData.delete(key);
+            }
+        }
+        formData.append('is_active', document.getElementById('edit_is_active').checked ? 'true' : 'false');
+        const id = document.getElementById('edit_id').value;
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(`/api/inventory/products/${id}/`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            if(res.ok) {
+                alert('Medicine updated successfully!');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editMedicineModal'));
+                modal.hide();
+                loadProducts();
+            } else {
+                const data = await res.json();
+                alert('Failed: ' + JSON.stringify(data));
+            }
+        } catch(err) {
+            alert('Error updating medicine');
+        }
+    }
+
+    async function deleteMedicine(id) {
+        const result = await Swal.fire({
+            title: 'Delete Medicine',
+            text: 'Are you sure you want to completely delete this medicine? This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, delete it!'
+        });
+        if (!result.isConfirmed) return;
+        
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(`/api/inventory/products/${id}/`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.ok) {
+                alert('Medicine deleted successfully!');
+                loadProducts();
+            } else {
+                alert('Failed to delete medicine.');
+            }
+        } catch(err) {
+            alert('Error deleting medicine');
+        }
+    }
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+
+{% block title %}Returns Dashboard - Abin Pharma{% endblock %}
+
+{% block content %}
+<div class="container py-5 min-vh-100" style="background-color: var(--bg-color);">
+    <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
+        <h2 class="fw-bold"><i class="bi bi-arrow-return-left text-warning me-2"></i> Return Products Dashboard</h2>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back to Dashboard</a>
+    </div>
+
+    <div class="glass-card p-4 fade-in-up" style="animation-delay: 0.1s;">
+        
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills nav-fill p-2 bg-light border rounded-4 mb-4" id="returnsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold py-3 rounded-3" id="cancelled-tab" data-bs-toggle="pill" data-bs-target="#cancelled" type="button" role="tab">
+                    <i class="bi bi-x-circle me-2"></i>Cancelled Orders
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-3 rounded-3 text-secondary" id="damaged-tab" data-bs-toggle="pill" data-bs-target="#damaged" type="button" role="tab">
+                    <i class="bi bi-box-seam me-2"></i>Damaged Products
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold py-3 rounded-3 text-secondary" id="expired-tab" data-bs-toggle="pill" data-bs-target="#expired" type="button" role="tab">
+                    <i class="bi bi-hourglass-bottom me-2"></i>Expired Products
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="returnsTabContent">
+            
+            <!-- Cancelled Orders Tab -->
+            <div class="tab-pane fade show active" id="cancelled" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Total Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cancelledTableBody">
+                            <tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-danger" role="status"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Damaged Products Tab -->
+            <div class="tab-pane fade" id="damaged" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Return ID</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Qty</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th class="action-column-header">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="damagedTableBody">
+                            <tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-warning" role="status"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Expired Products Tab -->
+            <div class="tab-pane fade" id="expired" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Return ID</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Product</th>
+                                <th>Qty</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th class="action-column-header">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expiredTableBody">
+                            <tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-info" role="status"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const role = localStorage.getItem('user_role');
+        if (role !== 'admin') {
+            window.location.href = '/login/';
+            return;
+        }
+        loadReturnsData();
+    });
+
+    async function loadReturnsData() {
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/orders/admin-returns/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                
+                // Populate Cancelled Orders
+                renderCancelledOrders(data.cancelled_orders);
+                
+                // Populate Damaged Returns
+                renderReturnsTable(data.damaged_returns, 'damagedTableBody');
+                
+                // Populate Expired Returns
+                renderReturnsTable(data.expired_returns, 'expiredTableBody');
+                
+            } else {
+                showError('cancelledTableBody', 5);
+                showError('damagedTableBody', 7);
+                showError('expiredTableBody', 7);
+            }
+        } catch(err) {
+            console.error('Error loading returns data:', err);
+            showError('cancelledTableBody', 5);
+            showError('damagedTableBody', 7);
+            showError('expiredTableBody', 7);
+        }
+    }
+    
+    function renderCancelledOrders(orders) {
+        const tbody = document.getElementById('cancelledTableBody');
+        if (!orders || orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No cancelled orders found.</td></tr>';
+            return;
+        }
+        
+        let html = '';
+        orders.forEach(order => {
+            const date = new Date(order.created_at).toLocaleDateString('en-IN');
+            html += `
+                <tr>
+                    <td class="fw-bold text-primary">#${order.order_number}</td>
+                    <td>${date}</td>
+                    <td>${order.shipping_address ? 'Customer' : 'Retailer'}</td>
+                    <td class="fw-bold text-danger">₹${parseFloat(order.total_amount).toFixed(2)}</td>
+                    <td><span class="badge bg-danger">CANCELLED</span></td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+    
+    function renderReturnsTable(returns, tbodyId) {
+        const tbody = document.getElementById(tbodyId);
+        
+        // Dynamically check if any return is actionable (pending or approved)
+        const hasActions = returns && returns.some(ret => ret.status === 'pending' || ret.status === 'approved');
+        
+        // Find action header for this table and toggle it
+        const table = tbody.closest('table');
+        if (table) {
+            const actionHeader = table.querySelector('.action-column-header');
+            if (actionHeader) {
+                if (hasActions) {
+                    actionHeader.classList.remove('d-none');
+                } else {
+                    actionHeader.classList.add('d-none');
+                }
+            }
+        }
+
+        const colspan = hasActions ? 8 : 7;
+        
+        if (!returns || returns.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-muted py-4">No records found.</td></tr>`;
+            return;
+        }
+        
+        let html = '';
+        returns.forEach(ret => {
+            const date = new Date(ret.created_at).toLocaleDateString('en-IN');
+            let badgeClass = 'bg-secondary';
+            if (ret.status === 'approved') badgeClass = 'bg-success';
+            else if (ret.status === 'refunded') badgeClass = 'bg-primary';
+            else if (ret.status === 'rejected') badgeClass = 'bg-danger';
+            else if (ret.status === 'pending') badgeClass = 'bg-warning text-dark';
+            
+            let actionHtml = '';
+            if (ret.status === 'pending') {
+                actionHtml = `
+                    <button onclick="updateReturnStatus(this, ${ret.id}, 'approved')" class="btn btn-sm btn-success me-1 d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-check-lg"></i> Approve
+                    </button>
+                    <button onclick="updateReturnStatus(this, ${ret.id}, 'rejected')" class="btn btn-sm btn-danger d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-trash"></i> Reject
+                    </button>
+                `;
+            } else if (ret.status === 'approved') {
+                actionHtml = `
+                    <button onclick="updateReturnStatus(this, ${ret.id}, 'refunded')" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-currency-rupee"></i> Refund
+                    </button>
+                `;
+            } else {
+                actionHtml = '';
+            }
+
+            const batchNum = ret.batch_number || 'N/A';
+            const payStatus = ret.payment_status || 'pending';
+            const payMethod = ret.payment_method || 'N/A';
+            
+            let payBadgeClass = 'bg-warning-subtle text-warning border border-warning-subtle';
+            if (payStatus === 'completed') {
+                payBadgeClass = 'bg-success-subtle text-success border border-success-subtle';
+            } else if (payStatus === 'failed') {
+                payBadgeClass = 'bg-danger-subtle text-danger border border-danger-subtle';
+            }
+            
+            html += `
+                <tr>
+                    <td class="fw-bold">RET-${ret.id}</td>
+                    <td>${date}</td>
+                    <td>
+                        <div class="fw-medium">${ret.customer_name || '-'}</div>
+                        <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+                            Method: <span class="badge bg-light text-dark border px-1">${payMethod.toUpperCase()}</span>
+                        </div>
+                        <div class="small text-muted mt-0.5" style="font-size: 0.75rem;">
+                            Pay: <span class="badge ${payBadgeClass} px-1">${payStatus.toUpperCase()}</span>
+                        </div>
+                    </td>
+                    <td class="text-primary fw-medium">
+                        ${ret.product_name || '-'}
+                        <div class="text-muted small">Batch: <span class="badge bg-secondary-light text-secondary border border-secondary px-1">${batchNum}</span></div>
+                    </td>
+                    <td>
+                        <div class="fw-bold">${ret.quantity}</div>
+                        <div class="small text-success mt-1 fw-bold">₹${parseFloat(ret.refund_amount || 0).toFixed(2)}</div>
+                    </td>
+                    <td><small class="text-muted">${ret.reason || 'N/A'}</small></td>
+                    <td>
+                        <span class="badge ${badgeClass}">${ret.status.toUpperCase()}</span>
+                        ${ret.status === 'refunded' ? `<div class="small text-muted mt-1" style="font-size: 0.72rem;">Via: <span class="fw-bold text-success">${(ret.refund_method || 'cash').toUpperCase()}</span></div>` : ''}
+                    </td>
+                    ${hasActions ? `<td>${actionHtml}</td>` : ''}
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    async function updateReturnStatus(btn, returnId, newStatus) {
+        if (!btn) return;
+        
+        if (newStatus === 'refunded') {
+            btn.parentElement.innerHTML = `
+                <div class="d-flex align-items-center gap-1" style="min-width: 175px;">
+                    <select id="refMethod_${returnId}" class="form-select form-select-sm border-primary" style="width: 105px; font-size: 0.75rem; background-color: #ffffff !important; color: #212529 !important; border: 1px solid #ced4da !important;">
+                        <option value="cash" selected>Cash</option>
+                        <option value="upi">UPI</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="credit_account">Credit A/c</option>
+                    </select>
+                    <button onclick="submitRefund(this, ${returnId})" class="btn btn-sm btn-success py-1 px-2 fw-bold d-flex align-items-center justify-content-center">
+                        OK
+                    </button>
+                    <button onclick="loadReturnsData()" class="btn btn-sm btn-outline-secondary py-1 px-2 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        const originalHtml = btn.innerHTML;
+        const originalClass = btn.className;
+        
+        if (btn.getAttribute('data-confirm') !== 'true') {
+            // Enter confirm state
+            btn.setAttribute('data-confirm', 'true');
+            btn.className = "btn btn-sm btn-warning d-inline-flex align-items-center gap-1 text-dark fw-bold border border-warning";
+            btn.innerHTML = `<i class="bi bi-exclamation-triangle"></i> Confirm?`;
+            
+            // Hide siblings
+            const siblings = Array.from(btn.parentElement.children);
+            siblings.forEach(sib => { if (sib !== btn) sib.style.display = 'none'; });
+            
+            // Auto reset
+            setTimeout(() => {
+                if (btn.getAttribute('data-confirm') === 'true') {
+                    btn.removeAttribute('data-confirm');
+                    btn.className = originalClass;
+                    btn.innerHTML = originalHtml;
+                    siblings.forEach(sib => { sib.style.display = 'inline-flex'; });
+                }
+            }, 3000);
+            return;
+        }
+        
+        // Confirmed -> Enter loading state
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span>`;
+        
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/orders/admin-returns/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    return_id: returnId,
+                    status: newStatus
+                })
+            });
+            if (res.ok) {
+                btn.className = "btn btn-sm btn-success d-inline-flex align-items-center gap-1";
+                btn.innerHTML = `<i class="bi bi-check-lg"></i> Done`;
+                setTimeout(() => {
+                    loadReturnsData();
+                }, 1000);
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Failed to update return status');
+                // Reset
+                btn.disabled = false;
+                btn.removeAttribute('data-confirm');
+                btn.className = originalClass;
+                btn.innerHTML = originalHtml;
+                const siblings = Array.from(btn.parentElement.children);
+                siblings.forEach(sib => { sib.style.display = 'inline-flex'; });
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error updating return status');
+            // Reset
+            btn.disabled = false;
+            btn.removeAttribute('data-confirm');
+            btn.className = originalClass;
+            btn.innerHTML = originalHtml;
+            const siblings = Array.from(btn.parentElement.children);
+            siblings.forEach(sib => { sib.style.display = 'inline-flex'; });
+        }
+    }
+
+    async function submitRefund(btn, returnId) {
+        if (!btn) return;
+        const select = document.getElementById(`refMethod_${returnId}`);
+        const refMethod = select ? select.value : 'cash';
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span>`;
+        if (select) select.disabled = true;
+        
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/orders/admin-returns/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    return_id: returnId,
+                    status: 'refunded',
+                    refund_method: refMethod
+                })
+            });
+            if (res.ok) {
+                btn.className = "btn btn-sm btn-success";
+                btn.innerHTML = `<i class="bi bi-check-lg"></i> Done`;
+                setTimeout(() => {
+                    loadReturnsData();
+                }, 1000);
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Failed to submit refund');
+                loadReturnsData();
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error submitting refund');
+            loadReturnsData();
+        }
+    }
+
+    function showError(tbodyId, colspan) {
+        document.getElementById(tbodyId).innerHTML = `<tr><td colspan="${colspan}" class="text-center text-danger py-4"><i class="bi bi-exclamation-circle me-2"></i>Failed to load data.</td></tr>`;
+    }
+</script>
+{% endblock %}

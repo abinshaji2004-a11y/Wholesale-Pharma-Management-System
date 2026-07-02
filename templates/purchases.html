@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5 min-vh-100">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-0">Supplier <span class="text-primary">Purchases</span></h3>
+            <p class="text-muted small">Manage stock entries and purchase history</p>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-4" id="purchTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active px-4 fw-bold" id="purchase-tab" data-bs-toggle="pill" data-bs-target="#purchase-bill" type="button" role="tab">Purchase Bill</button>
+        </li>
+        <li class="nav-item ms-2" role="presentation">
+            <button class="nav-link px-4 fw-bold bg-light text-dark border" id="purch-history-tab" data-bs-toggle="pill" data-bs-target="#purch-history" type="button" role="tab" onclick="loadPurchaseHistory()">Purchase History</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="purchTabsContent">
+        
+        <!-- PURCHASE BILLING TAB -->
+        <div class="tab-pane fade show active" id="purchase-bill" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="glass-card p-4">
+                        <div class="row g-3 mb-4 border-bottom pb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Supplier Name</label>
+                                <input type="text" class="form-control" id="purchSupplier" placeholder="Enter supplier name">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small fw-bold">Invoice / Bill Number</label>
+                                <input type="text" class="form-control" id="purchBillNo" placeholder="e.g. INV-2023-001">
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-4 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small fw-bold">Select Product</label>
+                                <select class="form-select" id="purchProductSelect">
+                                    <option value="">Loading products...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label text-muted small fw-bold">Batch No</label>
+                                <input type="text" class="form-control" id="purchBatch">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label text-muted small fw-bold">Expiry Date</label>
+                                <input type="date" class="form-control" id="purchExpiry">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label text-muted small fw-bold">Qty</label>
+                                <input type="number" class="form-control" id="purchQty" value="1" min="1">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label text-muted small fw-bold">Price</label>
+                                <input type="number" class="form-control" id="purchPrice" placeholder="₹">
+                            </div>
+                            <div class="col-12 mt-3 text-end">
+                                <button class="btn btn-outline-primary" onclick="addPurchaseItem()">Add to List</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Batch</th>
+                                        <th>Expiry</th>
+                                        <th>Qty</th>
+                                        <th>Price</th>
+                                        <th>Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="purchTableBody">
+                                    <tr id="purchEmptyRow"><td colspan="7" class="text-center text-muted py-4">No items added to purchase</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="glass-card p-4 position-sticky" style="top: 100px;">
+                        <h5 class="fw-bold mb-4 border-bottom pb-3">Purchase Summary</h5>
+                        <div class="d-flex justify-content-between mb-4">
+                            <span class="fw-bold fs-5">Total Purchase</span>
+                            <span class="fw-bold fs-4 text-primary">₹<span id="purchGrandTotal">0.00</span></span>
+                        </div>
+                        <button class="btn btn-success-custom w-100 py-3" onclick="submitPurchaseBill()" id="btnSubmitPurch">
+                            <i class="bi bi-save me-2"></i> Save Purchase & Update Stock
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PURCHASE HISTORY TAB -->
+        <div class="tab-pane fade" id="purch-history" role="tabpanel">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                    <h5 class="fw-bold mb-0">Recent Supplier Purchases</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small">Filter:</span>
+                        <select id="purchPaymentFilter" class="form-select form-select-sm" style="width: 150px;" onchange="filterPurchHistory()">
+                            <option value="">All Payments</option>
+                            <option value="completed">Closed</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Bill No.</th>
+                                <th>Date & Time</th>
+                                <th>Supplier Name</th>
+                                <th>Items Count</th>
+                                <th>Total Amount</th>
+                                <th>Payment</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="purchHistoryTableBody">
+                            <tr><td colspan="7" class="text-center text-muted py-4">Loading purchase history...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const token = localStorage.getItem('access_token');
+    if(!token || localStorage.getItem('user_role') !== 'admin') {
+        alert('Unauthorized access. Admin only.');
+        window.location.href = '/dashboard/';
+    }
+
+    let purchItems = [];
+    let allProducts = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/inventory/products/');
+            allProducts = await res.json();
+            
+            let opts = '<option value="">Select Product...</option>';
+            allProducts.forEach(p => opts += `<option value="${p.id}" data-price="${p.wholesale_price}">${p.name}</option>`);
+            document.getElementById('purchProductSelect').innerHTML = opts;
+        } catch(err) { console.error(err); }
+    });
+
+    document.getElementById('purchProductSelect').addEventListener('change', function(e) {
+        const selected = this.options[this.selectedIndex];
+        if(selected.value) {
+            document.getElementById('purchPrice').value = selected.dataset.price;
+        }
+    });
+
+    function addPurchaseItem() {
+        const sel = document.getElementById('purchProductSelect');
+        const prodId = sel.value;
+        const prodName = sel.options[sel.selectedIndex].text;
+        const batch = document.getElementById('purchBatch').value;
+        const exp = document.getElementById('purchExpiry').value;
+        const qty = parseInt(document.getElementById('purchQty').value);
+        const price = parseFloat(document.getElementById('purchPrice').value);
+
+        if(!prodId || !batch || !exp || !qty || isNaN(price)) {
+            alert('Please fill all item fields correctly.');
+            return;
+        }
+
+        purchItems.push({
+            product: parseInt(prodId),
+            productName: prodName,
+            batch_number: batch,
+            expiry_date: exp,
+            quantity: qty,
+            purchase_price: price
+        });
+
+        sel.value = '';
+        document.getElementById('purchBatch').value = '';
+        document.getElementById('purchExpiry').value = '';
+        document.getElementById('purchQty').value = '1';
+        document.getElementById('purchPrice').value = '';
+
+        renderPurchaseTable();
+    }
+
+    function removePurchaseItem(index) {
+        purchItems.splice(index, 1);
+        renderPurchaseTable();
+    }
+
+    function renderPurchaseTable() {
+        const tbody = document.getElementById('purchTableBody');
+        let total = 0;
+
+        if(purchItems.length === 0) {
+            tbody.innerHTML = '<tr id="purchEmptyRow"><td colspan="7" class="text-center text-muted py-4">No items added to purchase</td></tr>';
+        } else {
+            let html = '';
+            purchItems.forEach((item, index) => {
+                const itemTotal = item.purchase_price * item.quantity;
+                total += itemTotal;
+                html += `
+                <tr>
+                    <td class="fw-medium">${item.productName}</td>
+                    <td>${item.batch_number}</td>
+                    <td>${item.expiry_date}</td>
+                    <td>${item.quantity}</td>
+                    <td>₹${item.purchase_price.toFixed(2)}</td>
+                    <td class="fw-bold">₹${itemTotal.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-outline-danger" onclick="removePurchaseItem(${index})"><i class="bi bi-trash"></i></button></td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        document.getElementById('purchGrandTotal').innerText = total.toFixed(2);
+    }
+
+    async function submitPurchaseBill() {
+        if(purchItems.length === 0) {
+            alert('Add items to the purchase list first.');
+            return;
+        }
+
+        const supplier = document.getElementById('purchSupplier').value;
+        const billNo = document.getElementById('purchBillNo').value;
+
+        if(!supplier || !billNo) {
+            alert('Please enter Supplier Name and Bill Number.');
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitPurch');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+
+        const payload = {
+            supplier: supplier,
+            bill_number: billNo,
+            total_amount: document.getElementById('purchGrandTotal').innerText,
+            items: purchItems.map(i => ({
+                product: i.product,
+                batch_number: i.batch_number,
+                expiry_date: i.expiry_date,
+                quantity: i.quantity,
+                purchase_price: i.purchase_price
+            }))
+        };
+
+        try {
+            const res = await fetch('/api/inventory/purchases/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if(res.ok) {
+                alert('Purchase Bill saved and inventory updated successfully!');
+                purchItems = [];
+                document.getElementById('purchSupplier').value = '';
+                document.getElementById('purchBillNo').value = '';
+                renderPurchaseTable();
+            } else {
+                const err = await res.json();
+                alert('Error saving bill: ' + JSON.stringify(err));
+            }
+        } catch(err) {
+            alert('Network Error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save me-2"></i> Save Purchase & Update Stock';
+        }
+    }
+
+    let purchHistoryData = [];
+
+    async function loadPurchaseHistory() {
+        try {
+            const res = await fetch('/api/inventory/purchases/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            purchHistoryData = await res.json();
+            renderPurchHistory(purchHistoryData);
+        } catch(err) {
+            console.error(err);
+            document.getElementById('purchHistoryTableBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Error loading purchase history</td></tr>';
+        }
+    }
+
+    function renderPurchHistory(data) {
+        const tbody = document.getElementById('purchHistoryTableBody');
+        if(data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No purchases recorded yet.</td></tr>';
+            return;
+        }
+
+        let html = '';
+        data.forEach(bill => {
+            const dateObj = new Date(bill.date);
+            const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            const isPaid = bill.payment_status === 'completed';
+            const paymentBadge = isPaid ? 
+                `<span class="badge bg-success-light text-success border border-success px-2 py-1">Closed</span>` : 
+                `<span class="badge bg-danger-light text-danger border border-danger px-2 py-1">Pending</span>`;
+
+            const payBtn = isPaid ?
+                `<button class="btn btn-sm btn-success me-1" disabled title="Payment Settled"><i class="bi bi-check-lg"></i></button>` :
+                `<button onclick="closePurchPayment(${bill.id})" class="btn btn-sm btn-outline-success me-1" title="Mark as Paid/Closed"><i class="bi bi-cash-coin"></i></button>`;
+
+            html += `
+            <tr>
+                <td class="fw-bold text-primary">#${bill.bill_number}</td>
+                <td>${dateStr}</td>
+                <td class="fw-medium">${bill.supplier_name || 'Unknown'}</td>
+                <td><span class="badge bg-secondary">${bill.items.length} Items</span></td>
+                <td class="fw-bold text-danger">₹${parseFloat(bill.total_amount).toFixed(2)}</td>
+                <td>${paymentBadge}</td>
+                <td>${payBtn}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function filterPurchHistory() {
+        const filterVal = document.getElementById('purchPaymentFilter').value;
+        if (!filterVal) {
+            renderPurchHistory(purchHistoryData);
+        } else {
+            const filtered = purchHistoryData.filter(bill => bill.payment_status === filterVal);
+            renderPurchHistory(filtered);
+        }
+    }
+
+    async function closePurchPayment(billId) {
+        const result = await Swal.fire({
+            title: 'Settle Bill',
+            text: 'Mark this supplier purchase bill as Paid / Settled?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, mark as Paid!'
+        });
+        if (!result.isConfirmed) return;
+        try {
+            const res = await fetch(`/api/inventory/purchases/${billId}/update_payment_status/`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: 'completed' })
+            });
+            if(res.ok) {
+                alert('Supplier payment status updated to Closed!');
+                loadPurchaseHistory();
+            } else {
+                alert('Failed to update supplier payment status');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error updating supplier payment status');
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,1033 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - Abin Pharma{% endblock %}
+
+{% block content %}
+<div class="container py-5 min-vh-100" style="background-color: var(--bg-color);">
+    <div class="row g-4 fade-in-up">
+        
+        <!-- Profile Sidebar -->
+        <div class="col-lg-4">
+            <div class="glass-card p-4 h-100 text-center border-top border-primary border-5">
+                <div class="mb-4">
+                    <i class="bi bi-person-circle text-primary" style="font-size: 5rem;"></i>
+                </div>
+                <h4 class="fw-bold mb-1" id="profileName">Loading...</h4>
+                <p class="text-muted mb-4" id="profileEmail">Loading email...</p>
+                
+                <hr class="my-4">
+                
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="bi bi-pencil-square me-2"></i>Edit Profile
+                    </button>
+                    <a href="{% url 'shop' %}" class="btn btn-primary-custom">
+                        <i class="bi bi-shop me-2"></i>Continue Shopping
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Shopping History & Return Tracking -->
+        <div class="col-lg-8">
+            <div class="glass-card p-4 h-100">
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-pills nav-fill p-1 bg-light border rounded-4 mb-4" id="profileTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold py-2 rounded-3 text-success" id="shopping-tab" data-bs-toggle="pill" data-bs-target="#shopping" type="button" role="tab">
+                            <i class="bi bi-clock-history me-2"></i>Purchase History
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold py-2 rounded-3 text-warning" id="returns-tab" data-bs-toggle="pill" data-bs-target="#returns" type="button" role="tab" onclick="loadReturnsHistory()">
+                            <i class="bi bi-arrow-return-left me-2"></i>My Return Requests
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="profileTabsContent">
+                    <!-- Shopping History Tab -->
+                    <div class="tab-pane fade show active" id="shopping" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Date</th>
+                                        <th>Total Amount</th>
+                                        <th>Order Status</th>
+                                        <th>Payment</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTableBody">
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Return Requests Tab -->
+                    <div class="tab-pane fade" id="returns" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Return ID</th>
+                                        <th>Date</th>
+                                        <th>Product Name</th>
+                                        <th>Qty</th>
+                                        <th>Reason & Type</th>
+                                        <th>Status</th>
+                                        <th class="action-column-header">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="returnsHistoryTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-muted">
+                                            Loading return requests...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Details Modal -->
+<div class="modal fade" id="orderItemsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold" id="orderItemsModalTitle">Order Items</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Batch</th>
+                                <th>Price</th>
+                                <th>Qty</th>
+                                <th>Subtotal (Inc. GST)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderItemsModalBody">
+                            <!-- Items inserted via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Edit Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editProfileForm">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Username</label>
+                        <input type="text" class="form-control" id="editUsername">
+                        <div id="usernameHint" class="form-text small text-muted">You can only change your username once.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Email Address</label>
+                        <input type="email" class="form-control" id="editEmail" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">First Name</label>
+                            <input type="text" class="form-control" id="editFirstName">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small fw-bold">Last Name</label>
+                            <input type="text" class="form-control" id="editLastName">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold">Phone Number</label>
+                        <input type="text" class="form-control" id="editPhone">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-primary w-100 py-2 fw-bold" id="saveProfileBtn" onclick="saveProfileData()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Return Products Modal -->
+<div class="modal fade" id="returnModal">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header border-bottom border-light pb-2">
+                <h5 class="modal-title fw-bold" id="returnModalTitle">Return Products</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div id="returnModalMessage" class="alert d-none mb-3"></div>
+                <div id="returnModalLoading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <div id="returnModalContent" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Qty Purchased</th>
+                                    <th>Return Qty</th>
+                                    <th>Reason & Type</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="returnProductsList">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tracking Modal -->
+<div class="modal fade" id="trackingModal">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header border-bottom border-light pb-2">
+                <h5 class="modal-title fw-bold" id="trackingModalTitle">Order Tracking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-4">
+                <div id="trackingStepper" class="d-flex flex-column gap-4 position-relative ps-4" style="min-height: 250px;">
+                    <!-- Stepper Vertical Progress Line -->
+                    <div class="position-absolute" style="left: 42px; top: 18px; bottom: 18px; width: 4px; background-color: #e9ecef; z-index: 1; transform: translateX(-50%); border-radius: 2px;">
+                        <div id="trackingLineActive" class="bg-success" style="width: 100%; height: 0%; transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 2px;"></div>
+                    </div>
+                    
+                    <!-- Step 1: Placed -->
+                    <div class="d-flex align-items-center gap-3 position-relative" style="z-index: 2;">
+                        <div id="stepIcon_placed" class="rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white" style="width: 36px; height: 36px; font-size: 1.1rem; border: 3px solid var(--bg-color);">
+                            <i class="bi bi-cart-check"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold">Order Placed</div>
+                            <small class="text-muted">Order received successfully</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Confirmed -->
+                    <div class="d-flex align-items-center gap-3 position-relative" style="z-index: 2;">
+                        <div id="stepIcon_confirmed" class="rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white" style="width: 36px; height: 36px; font-size: 1.1rem; border: 3px solid var(--bg-color);">
+                            <i class="bi bi-clipboard-check"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold">Order Confirmed</div>
+                            <small class="text-muted">Order is verified and packing</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Shipped -->
+                    <div class="d-flex align-items-center gap-3 position-relative" style="z-index: 2;">
+                        <div id="stepIcon_shipped" class="rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white" style="width: 36px; height: 36px; font-size: 1.1rem; border: 3px solid var(--bg-color);">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold">Shipped</div>
+                            <small class="text-muted">In transit to destination</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 4: Delivered -->
+                    <div class="d-flex align-items-center gap-3 position-relative" style="z-index: 2;">
+                        <div id="stepIcon_delivered" class="rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white" style="width: 36px; height: 36px; font-size: 1.1rem; border: 3px solid var(--bg-color);">
+                            <i class="bi bi-house-check"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold">Delivered</div>
+                            <small class="text-muted">Package arrived at destination</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-4 mb-0 d-flex align-items-center gap-2 border border-info-subtle bg-info-subtle text-info-emphasis">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <small style="font-size: 0.8rem;">You will receive SMS notifications on your registered mobile number for transit updates.</small>
+                </div>
+            </div>
+        </div>
+</div>
+
+<!-- Order Items Details Modal -->
+<div class="modal fade" id="orderItemsModal">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-0">
+            <div class="modal-header border-bottom border-light pb-2">
+                <h5 class="modal-title fw-bold" id="orderItemsModalTitle">Order Items</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Batch</th>
+                                <th>Unit Price</th>
+                                <th>Qty</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderItemsModalBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProfileData();
+        loadShoppingHistory();
+        loadReturnsHistory();
+    });
+
+    async function loadProfileData() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            window.location.href = '/customer-login/';
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/accounts/profile/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('profileName').innerText = data.username || 'Retail Customer';
+                document.getElementById('profileEmail').innerText = data.email || 'No email provided';
+                
+                // Populate modal fields
+                const userEl = document.getElementById('editUsername');
+                if (userEl) {
+                    userEl.value = data.username || '';
+                    if (data.has_changed_username) {
+                        userEl.disabled = true;
+                        userEl.classList.add('bg-light');
+                        document.getElementById('usernameHint').innerHTML = '<i class="bi bi-exclamation-octagon-fill me-1"></i> Username has already been changed once.';
+                        document.getElementById('usernameHint').className = "form-text small text-danger fw-semibold mt-1 d-block";
+                    } else {
+                        userEl.disabled = false;
+                        userEl.classList.remove('bg-light');
+                        document.getElementById('usernameHint').innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Note: You can only change your username once.';
+                        document.getElementById('usernameHint').className = "form-text small text-warning fw-bold mt-1 d-block";
+                    }
+                }
+                document.getElementById('editEmail').value = data.email || '';
+                document.getElementById('editFirstName').value = data.first_name || '';
+                document.getElementById('editLastName').value = data.last_name || '';
+                document.getElementById('editPhone').value = data.phone_number || '';
+                
+            } else {
+                document.getElementById('profileName').innerText = 'Retail Customer';
+                document.getElementById('profileEmail').innerText = 'customer@example.com';
+            }
+        } catch (err) {
+            console.error('Error loading profile:', err);
+        }
+    }
+
+    async function loadShoppingHistory() {
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/orders/history/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                window.customerOrders = data;
+                let html = '';
+                
+                if (data.length === 0) {
+                    html = '<tr><td colspan="6" class="text-center py-4 text-muted">You have no past orders. Start shopping!</td></tr>';
+                } else {
+                    data.forEach(order => {
+                        const date = new Date(order.created_at).toLocaleDateString('en-IN');
+                        let badgeClass = 'bg-secondary';
+                        if (order.status === 'delivered') badgeClass = 'bg-success';
+                        else if (order.status === 'pending') badgeClass = 'bg-warning text-dark';
+                        else if (order.status === 'shipped') badgeClass = 'bg-info text-dark';
+                        else if (order.status === 'packed') badgeClass = 'bg-primary';
+                        else if (order.status === 'draft') badgeClass = 'bg-dark text-light';
+                        
+                        const isPaid = order.payment_status === 'completed';
+                        const paidAmt = parseFloat(order.payment_amount_paid || 0).toFixed(2);
+                        const leftAmt = parseFloat(order.payment_amount_remaining || order.total_amount).toFixed(2);
+                        const paymentBadge = isPaid ?
+                            `<span class="badge bg-success-light text-success border border-success px-2.5 py-1">Closed</span>` :
+                            `<div>
+                                <span class="badge bg-danger-light text-danger border border-danger px-2.5 py-1">Pending</span>
+                                <div class="small text-muted mt-1" style="font-size:0.75rem;">
+                                    Paid: ₹${paidAmt}<br>
+                                    Left: ₹${leftAmt}
+                                </div>
+                            </div>`;
+
+                        let actionBtn = '';
+                        if (order.status === 'draft') {
+                            actionBtn = `
+                                <button class="btn btn-sm btn-primary" onclick="checkoutDraftOrder(${order.id}, '${order.total_amount}')">
+                                    <i class="bi bi-cart-check"></i> Complete
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="cancelOrder(${order.id})">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            `;
+                        } else if (order.status === 'delivered') {
+                            actionBtn = `
+                                <button class="btn btn-sm btn-outline-danger" onclick="openReturnModal(${order.id}, '${order.order_number}')">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Return
+                                </button>
+                            `;
+                        } else if (order.status !== 'cancelled') {
+                            actionBtn = `
+                                <button class="btn btn-sm btn-outline-danger" onclick="cancelOrder(${order.id})">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
+                            `;
+                        }
+
+                        html += `
+                        <tr>
+                            <td class="fw-bold"><a href="#" onclick="showOrderItemsModal(${order.id}); return false;" class="text-primary text-decoration-none">#${order.order_number}</a></td>
+                            <td>${date}</td>
+                            <td class="fw-bold text-success">₹${parseFloat(order.total_amount).toFixed(2)}</td>
+                            <td><span class="badge ${badgeClass} fs-6">${order.status.toUpperCase()}</span></td>
+                            <td>${paymentBadge}</td>
+                             <td>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="trackOrder('${order.order_number}', '${order.status}')">
+                                        <i class="bi bi-geo-alt"></i> Track
+                                    </button>
+                                    ${actionBtn}
+                                </div>
+                            </td>
+                        </tr>
+                        `;
+                    });
+                }
+                document.getElementById('historyTableBody').innerHTML = html;
+            } else {
+                document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load history</td></tr>';
+            }
+        } catch (err) {
+            console.error('Error loading history:', err);
+            document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading history</td></tr>';
+        }
+    }
+    
+    function trackOrder(orderNum, status) {
+        document.getElementById('trackingModalTitle').innerText = `Track Order #${orderNum}`;
+        
+        const steps = ['placed', 'confirmed', 'shipped', 'delivered'];
+        steps.forEach(step => {
+            const icon = document.getElementById(`stepIcon_${step}`);
+            if (icon) {
+                icon.className = 'rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white';
+            }
+        });
+        
+        let activeSteps = ['placed']; // Always placed
+        let activePct = '0%';
+        
+        if (status === 'confirmed' || status === 'packed') {
+            activeSteps = ['placed', 'confirmed'];
+            activePct = '33.3%';
+        } else if (status === 'shipped') {
+            activeSteps = ['placed', 'confirmed', 'shipped'];
+            activePct = '66.6%';
+        } else if (status === 'delivered') {
+            activeSteps = ['placed', 'confirmed', 'shipped', 'delivered'];
+            activePct = '100%';
+        }
+        
+        activeSteps.forEach(step => {
+            const icon = document.getElementById(`stepIcon_${step}`);
+            if (icon) {
+                icon.className = 'rounded-circle d-flex align-items-center justify-content-center bg-success text-white';
+            }
+        });
+        
+        // Animate dynamic tracking line height
+        const activeLine = document.getElementById('trackingLineActive');
+        if (activeLine) {
+            activeLine.style.height = '0%'; // Reset first
+            setTimeout(() => {
+                activeLine.style.height = activePct;
+            }, 200);
+        }
+        
+        const myModal = new bootstrap.Modal(document.getElementById('trackingModal'));
+        myModal.show();
+    }
+
+    window.showOrderItemsModal = function(orderId) {
+        const order = (window.customerOrders || []).find(o => o.id == orderId);
+        if (!order) return;
+        
+        document.getElementById('orderItemsModalTitle').innerText = `Order #${order.order_number} Items`;
+        
+        let html = '';
+        if (!order.items || order.items.length === 0) {
+            html = '<tr><td colspan="5" class="text-center text-muted py-4">No items found in this order.</td></tr>';
+        } else {
+            order.items.forEach(item => {
+                const price = parseFloat(item.price).toFixed(2);
+                const gst = parseFloat(item.gst_amount || 0).toFixed(2);
+                const subtotal = (parseFloat(item.price) * item.quantity);
+                const total = (parseFloat(subtotal) + parseFloat(gst)).toFixed(2);
+                const prodName = (item.product && item.product.name) ? item.product.name : 'Product';
+                html += `
+                <tr>
+                    <td class="fw-bold text-dark">${prodName}</td>
+                    <td><span class="badge bg-secondary-light text-secondary border border-secondary px-2">${item.batch_number || 'N/A'}</span></td>
+                    <td>₹${price}</td>
+                    <td>${item.quantity}</td>
+                    <td class="fw-bold text-success">₹${total} <small class="text-muted d-block fw-normal" style="font-size:0.7rem;">(GST: ₹${gst})</small></td>
+                </tr>
+                `;
+            });
+        }
+        document.getElementById('orderItemsModalBody').innerHTML = html;
+        
+        const modal = new bootstrap.Modal(document.getElementById('orderItemsModal'));
+        modal.show();
+    }
+
+    async function saveProfileData() {
+        const btn = document.getElementById('saveProfileBtn');
+        
+        // Basic validation
+        const email = document.getElementById('editEmail').value;
+        if (!email) {
+            alert('Email address is required!');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+        
+        const token = localStorage.getItem('access_token');
+        const payload = {
+            username: document.getElementById('editUsername').value,
+            email: email,
+            first_name: document.getElementById('editFirstName').value,
+            last_name: document.getElementById('editLastName').value,
+            phone_number: document.getElementById('editPhone').value
+        };
+        
+        try {
+            const res = await fetch('/api/accounts/profile/', {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (res.ok) {
+                const modalEl = document.getElementById('editProfileModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+                loadProfileData(); // Reload UI
+            } else {
+                alert('Failed to update profile. Please try again.');
+            }
+        } catch(err) {
+            console.error('Update error:', err);
+            alert('An error occurred while saving.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Save Changes';
+        }
+    }
+
+    let currentOrderItems = [];
+
+    async function openReturnModal(orderId, orderNum) {
+        document.getElementById('returnModalTitle').innerText = `Return Products - Order #${orderNum}`;
+        document.getElementById('returnModalLoading').style.display = 'block';
+        document.getElementById('returnModalContent').style.display = 'none';
+        
+        const myModal = new bootstrap.Modal(document.getElementById('returnModal'));
+        myModal.show();
+        
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/orders/history/${orderId}/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if(res.ok) {
+                const order = await res.json();
+                currentOrderItems = order.items || [];
+                
+                let html = '';
+                if(currentOrderItems.length === 0) {
+                    html = '<tr><td colspan="5" class="text-center text-muted">No products in this order.</td></tr>';
+                } else {
+                    currentOrderItems.forEach(item => {
+                        const prod = item.product || { name: 'Unknown Product', id: 0 };
+                        const batchNum = item.batch_number || 'N/A';
+                        html += `
+                        <tr>
+                            <td>
+                                <div class="fw-bold">${prod.name}</div>
+                                <div class="text-muted small">Batch: <span class="badge bg-secondary-light text-secondary border border-secondary px-1 py-0.5">${batchNum}</span></div>
+                            </td>
+                            <td class="fw-bold">${item.quantity}</td>
+                            <td>
+                                <input type="number" id="retQty_${prod.id}" min="1" max="${item.quantity}" value="${item.quantity}" class="form-control form-control-sm" style="width: 80px; background-color: #ffffff !important; color: #212529 !important; border: 1px solid #ced4da !important;">
+                            </td>
+                            <td>
+                                <select id="retType_${prod.id}" class="form-select form-select-sm mb-1" style="background-color: #ffffff !important; color: #212529 !important; border: 1px solid #ced4da !important;">
+                                    <option value="damaged">Damaged</option>
+                                    <option value="expired">Expired</option>
+                                    <option value="other" selected>Other</option>
+                                </select>
+                                <input type="text" id="retReason_${prod.id}" placeholder="Specify reason..." class="form-control form-control-sm" style="background-color: #ffffff !important; color: #212529 !important; border: 1px solid #ced4da !important;">
+                            </td>
+                            <td>
+                                <button onclick="submitReturn(${orderId}, ${prod.id})" class="btn btn-sm btn-danger d-flex align-items-center gap-1">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Return
+                                </button>
+                            </td>
+                        </tr>
+                        `;
+                    });
+                }
+                document.getElementById('returnProductsList').innerHTML = html;
+                document.getElementById('returnModalLoading').style.display = 'none';
+                document.getElementById('returnModalContent').style.display = 'block';
+            } else {
+                document.getElementById('returnProductsList').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load order details.</td></tr>';
+                document.getElementById('returnModalLoading').style.display = 'none';
+                document.getElementById('returnModalContent').style.display = 'block';
+            }
+        } catch(err) {
+            console.error(err);
+            document.getElementById('returnProductsList').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading details.</td></tr>';
+            document.getElementById('returnModalLoading').style.display = 'none';
+            document.getElementById('returnModalContent').style.display = 'block';
+        }
+    }
+
+    function showModalMessage(msg, isSuccess = false) {
+        const el = document.getElementById('returnModalMessage');
+        if(!el) return;
+        el.innerText = msg;
+        el.className = `alert ${isSuccess ? 'alert-success' : 'alert-danger'} mb-3`;
+        el.classList.remove('d-none');
+        setTimeout(() => {
+            el.classList.add('d-none');
+        }, 5000);
+    }
+
+    async function submitReturn(orderId, productId) {
+        try {
+            const qtyInput = document.getElementById(`retQty_${productId}`);
+            const typeSelect = document.getElementById(`retType_${productId}`);
+            const reasonInput = document.getElementById(`retReason_${productId}`);
+            
+            if (!qtyInput || !typeSelect || !reasonInput) {
+                showModalMessage(`Error: Input elements not found for product ID ${productId}`);
+                return;
+            }
+            
+            const qty = parseInt(qtyInput.value);
+            const type = typeSelect.value;
+            const reason = reasonInput.value;
+            
+            const maxQty = parseInt(qtyInput.getAttribute('max') || '1');
+            
+            if (isNaN(qty) || qty <= 0 || qty > maxQty) {
+                showModalMessage(`Please enter a valid return quantity (1 to ${maxQty}).`);
+                return;
+            }
+            if (!reason.trim()) {
+                showModalMessage('Please specify a return reason.');
+                return;
+            }
+            
+            // Inline Confirmation Logic
+            const btn = document.querySelector(`button[onclick="submitReturn(${orderId}, ${productId})"]`);
+            if (btn) {
+                if (btn.getAttribute('data-confirm') !== 'true') {
+                    // Enter confirm state
+                    btn.setAttribute('data-confirm', 'true');
+                    btn.className = "btn btn-sm btn-warning d-flex align-items-center gap-1 text-dark fw-bold border border-warning";
+                    btn.innerHTML = `<i class="bi bi-exclamation-triangle"></i> Confirm?`;
+                    
+                    // Auto reset after 3 seconds
+                    setTimeout(() => {
+                        if (btn.getAttribute('data-confirm') === 'true') {
+                            btn.removeAttribute('data-confirm');
+                            btn.className = "btn btn-sm btn-danger d-flex align-items-center gap-1";
+                            btn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> Return`;
+                        }
+                    }, 3000);
+                    return;
+                }
+                
+                // Confirm clicked -> Enter loading state
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Processing...`;
+            }
+            
+            const token = localStorage.getItem('access_token');
+            
+            // Find batch number from currentOrderItems
+            const matchedItem = currentOrderItems.find(item => item.product && item.product.id === productId);
+            const batchNum = matchedItem ? (matchedItem.batch_number || 'N/A') : 'N/A';
+            
+            const res = await fetch(`/api/orders/history/${orderId}/request_return/`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    quantity: qty,
+                    return_type: type,
+                    reason: reason,
+                    batch_number: batchNum
+                })
+            });
+            if(res.ok) {
+                showModalMessage('Return request submitted successfully!', true);
+                if (btn) {
+                    btn.className = "btn btn-sm btn-success d-flex align-items-center gap-1";
+                    btn.innerHTML = `<i class="bi bi-check-lg"></i> Done`;
+                }
+                loadShoppingHistory();
+                loadReturnsHistory();
+                setTimeout(() => {
+                    const modalEl = document.getElementById('returnModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if(modal) modal.hide();
+                }, 1500);
+            } else {
+                const err = await res.json();
+                showModalMessage(err.error || 'Failed to submit return request.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.removeAttribute('data-confirm');
+                    btn.className = "btn btn-sm btn-danger d-flex align-items-center gap-1";
+                    btn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> Return`;
+                }
+            }
+        } catch(err) {
+            console.error(err);
+            showModalMessage('Error submitting return: ' + err.message);
+            const btn = document.querySelector(`button[onclick="submitReturn(${orderId}, ${productId})"]`);
+            if (btn) {
+                btn.disabled = false;
+                btn.removeAttribute('data-confirm');
+                btn.className = "btn btn-sm btn-danger d-flex align-items-center gap-1";
+                btn.innerHTML = `<i class="bi bi-arrow-counterclockwise"></i> Return`;
+            }
+        }
+    }
+
+    async function loadReturnsHistory() {
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch('/api/orders/returns/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const tbody = document.getElementById('returnsHistoryTableBody');
+                
+                // Dynamically evaluate if any request is pending (cancellable)
+                const hasActions = data && data.some(ret => ret.status === 'pending');
+                
+                const table = tbody.closest('table');
+                if (table) {
+                    const actionHeader = table.querySelector('.action-column-header');
+                    if (actionHeader) {
+                        if (hasActions) {
+                            actionHeader.classList.remove('d-none');
+                        } else {
+                            actionHeader.classList.add('d-none');
+                        }
+                    }
+                }
+                
+                const colspan = hasActions ? 7 : 6;
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-muted">You have not submitted any return requests yet.</td></tr>`;
+                    return;
+                }
+                
+                let html = '';
+                data.forEach(ret => {
+                    const date = new Date(ret.created_at).toLocaleDateString('en-IN');
+                    let badgeClass = 'bg-secondary';
+                    if (ret.status === 'approved') badgeClass = 'bg-success';
+                    else if (ret.status === 'refunded') badgeClass = 'bg-primary';
+                    else if (ret.status === 'rejected') badgeClass = 'bg-danger';
+                    else if (ret.status === 'pending') badgeClass = 'bg-warning text-dark';
+                    else if (ret.status === 'cancelled') badgeClass = 'bg-light text-muted border';
+                    
+                    const typeLabel = ret.return_type.toUpperCase();
+                    
+                    let actionHtml = '';
+                    if (ret.status === 'pending') {
+                        actionHtml = `
+                            <button onclick="cancelReturnRequest(${ret.id})" class="btn btn-sm btn-outline-danger py-1 px-2 d-flex align-items-center gap-1">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </button>
+                        `;
+                    } else {
+                        actionHtml = `<span class="text-muted small">-</span>`;
+                    }
+                    
+                    html += `
+                    <tr>
+                        <td class="fw-bold">RET-${ret.id}</td>
+                        <td>${date}</td>
+                        <td class="fw-medium">${ret.product_name || 'Unknown Product'} <div class="text-muted small">Batch: ${ret.batch_number || 'N/A'}</div></td>
+                        <td>
+                            <div class="fw-bold">${ret.quantity}</div>
+                            <div class="small text-success mt-1 fw-bold">₹${parseFloat(ret.refund_amount || 0).toFixed(2)}</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary-light text-secondary border border-secondary mb-1">${typeLabel}</span>
+                            <div class="small text-muted">${ret.reason || 'N/A'}</div>
+                        </td>
+                         <td>
+                             <span class="badge ${badgeClass}">${ret.status.toUpperCase()}</span>
+                             ${ret.status === 'refunded' ? `<div class="small text-muted mt-1" style="font-size: 0.72rem;">Via: <span class="fw-bold text-success">${(ret.refund_method || 'cash').toUpperCase()}</span></div>` : ''}
+                         </td>
+                         ${hasActions ? `<td>${actionHtml}</td>` : ''}
+                    </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                const table = document.getElementById('returnsHistoryTableBody').closest('table');
+                if (table) {
+                    const actionHeader = table.querySelector('.action-column-header');
+                    if (actionHeader) actionHeader.classList.add('d-none');
+                }
+                document.getElementById('returnsHistoryTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Failed to load returns history.</td></tr>';
+            }
+        } catch (err) {
+            console.error(err);
+            const table = document.getElementById('returnsHistoryTableBody').closest('table');
+            if (table) {
+                const actionHeader = table.querySelector('.action-column-header');
+                if (actionHeader) actionHeader.classList.add('d-none');
+            }
+            document.getElementById('returnsHistoryTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Error loading returns history.</td></tr>';
+        }
+    }
+
+    async function cancelReturnRequest(returnId) {
+        const btn = document.querySelector(`button[onclick="cancelReturnRequest(${returnId})"]`);
+        if (!btn) return;
+        
+        if (btn.getAttribute('data-confirm') !== 'true') {
+            btn.setAttribute('data-confirm', 'true');
+            btn.className = "btn btn-sm btn-warning py-1 px-2 d-flex align-items-center gap-1 text-dark fw-bold border border-warning";
+            btn.innerHTML = `<i class="bi bi-exclamation-triangle"></i> Confirm?`;
+            
+            setTimeout(() => {
+                if (btn.getAttribute('data-confirm') === 'true') {
+                    btn.removeAttribute('data-confirm');
+                    btn.className = "btn btn-sm btn-outline-danger py-1 px-2 d-flex align-items-center gap-1";
+                    btn.innerHTML = `<i class="bi bi-x-circle"></i> Cancel`;
+                }
+            }, 3000);
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span>`;
+        
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/orders/returns/${returnId}/cancel/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (res.ok) {
+                btn.className = "btn btn-sm btn-success py-1 px-2 d-flex align-items-center gap-1";
+                btn.innerHTML = `<i class="bi bi-check-lg"></i> Done`;
+                setTimeout(() => {
+                    loadReturnsHistory();
+                }, 1000);
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Failed to cancel return request.');
+                btn.disabled = false;
+                btn.removeAttribute('data-confirm');
+                btn.className = "btn btn-sm btn-outline-danger py-1 px-2 d-flex align-items-center gap-1";
+                btn.innerHTML = `<i class="bi bi-x-circle"></i> Cancel`;
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error cancelling return request: ' + err.message);
+            btn.disabled = false;
+            btn.removeAttribute('data-confirm');
+            btn.className = "btn btn-sm btn-outline-danger py-1 px-2 d-flex align-items-center gap-1";
+            btn.innerHTML = `<i class="bi bi-x-circle"></i> Cancel`;
+        }
+    }
+
+    async function cancelOrder(orderId) {
+        const result = await Swal.fire({
+            title: 'Cancel Order',
+            text: 'Are you sure you want to cancel this order?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Yes, cancel it!'
+        });
+        if (!result.isConfirmed) return;
+
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/orders/history/${orderId}/cancel_order/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (res.ok) {
+                alert('Order cancelled successfully!');
+                loadShoppingHistory();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to cancel order.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error cancelling order.');
+        }
+    }
+
+    function checkoutDraftOrder(orderId, totalAmount) {
+        document.getElementById('draftModalOrderId').value = orderId;
+        document.getElementById('draftModalAmount').innerText = '₹' + parseFloat(totalAmount).toFixed(2);
+        
+        const role = localStorage.getItem('user_role');
+        const creditOpt = document.getElementById('draftCreditOption');
+        if (role === 'dealer') {
+            if (creditOpt) creditOpt.style.display = 'block';
+        } else {
+            if (creditOpt) creditOpt.style.display = 'none';
+            if (document.getElementById('draftPaymentMethod').value === 'credit_account') {
+                document.getElementById('draftPaymentMethod').value = 'upi';
+            }
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('draftCheckoutModal'));
+        modal.show();
+    }
+
+    async function submitFinalizeDraft() {
+        const id = document.getElementById('draftModalOrderId').value;
+        const method = document.getElementById('draftPaymentMethod').value;
+        
+        const token = localStorage.getItem('access_token');
+        try {
+            const res = await fetch(`/api/orders/history/${id}/finalize-draft/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ payment_method: method })
+            });
+            if(res.ok) {
+                alert('Order finalized successfully!');
+                location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to finalize order.');
+            }
+        } catch(err) {
+            alert('Error finalizing draft.');
+        }
+    }
+</script>
+
+<!-- Draft Checkout Modal -->
+<div class="modal fade" id="draftCheckoutModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content glass-card border-0">
+      <div class="modal-header border-bottom border-light">
+        <h5 class="modal-title fw-bold">Complete Checkout</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+         <p class="text-muted">Finalize payment of <strong class="text-success" id="draftModalAmount">₹0.00</strong> for your draft order.</p>
+         <input type="hidden" id="draftModalOrderId">
+         <div class="mb-3">
+             <label class="form-label text-muted small fw-bold">Select Payment Option</label>
+             <select class="form-select" id="draftPaymentMethod">
+                 <option value="upi">UPI (GPay / PhonePe / Paytm)</option>
+                 <option value="card">Credit or Debit Card</option>
+                 <option value="netbanking">Net Banking</option>
+                 <option value="cod">Pay on Delivery / COD</option>
+                 <option value="credit_account" id="draftCreditOption">Dealer Credit Line</option>
+             </select>
+         </div>
+         <button class="btn btn-primary-custom w-100 py-2.5 mt-2 fw-bold" onclick="submitFinalizeDraft()">
+             Pay & Finalize Order
+         </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
