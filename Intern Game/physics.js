@@ -118,16 +118,22 @@ class Terrain {
         }
     }
 
-    // Procedural terrain height at coordinate x
+    // Procedural terrain height at coordinate x with a flat starting runway and smooth transition
     getHeight(x) {
-        if (x < -100) return 0; // Flat start zone
-        if (x < 300) {
-            // Smooth blend from flat start to hills
-            const blend = Math.max(0, x / 300);
-            const raw = this.getRawHeight(x);
-            return raw * blend - (1 - blend) * 50;
+        const flatY = -120; // Flat platform height in physics coordinates
+        const flatEnd = 250; // Runway ends here
+        const blendEnd = 550; // Hills transition complete here
+
+        if (x < flatEnd) {
+            return flatY;
+        } else if (x < blendEnd) {
+            const t = (x - flatEnd) / (blendEnd - flatEnd);
+            // Smooth-step (Hermite) interpolation for seamless transition
+            const smoothT = t * t * (3 - 2 * t);
+            return this.getRawHeight(x) * smoothT + (1 - smoothT) * flatY;
+        } else {
+            return this.getRawHeight(x);
         }
-        return this.getRawHeight(x);
     }
 
     getRawHeight(x) {
@@ -181,7 +187,7 @@ class Wheel {
         this.contactPoint = new Vector2D();
         
         // Upgradable physics factors
-        this.grip = 1.0;
+        this.grip = 1.15;
     }
 }
 
@@ -195,7 +201,7 @@ class Car {
         
         // Physical parameters
         this.mass = 120;
-        this.inertia = 12000;
+        this.inertia = 135000; // Corrected from 12000 to match the physical box inertia (1/12 * M * (W^2 + H^2))
         this.width = 110;
         this.height = 36;
         
@@ -204,15 +210,15 @@ class Car {
         this.isCrashed = false;
 
         // Suspension properties (Upgradable)
-        this.suspensionRestLength = 45;
-        this.suspensionSpringK = 1800; // Spring stiffness
-        this.suspensionDampingC = 95;  // Damper constant
+        this.suspensionRestLength = 46;
+        this.suspensionSpringK = 3500; // Spring stiffness
+        this.suspensionDampingC = 850;  // Damper constant (optimized for critical damping with 120kg mass)
 
         // Wheels
-        // Back wheel drives and brakes
-        this.backWheel = new Wheel(-40, -12, 22);
+        // Back wheel drives and brakes (wheelbase widened to 92px and lower center of mass to prevent nose lifting/wheelies)
+        this.backWheel = new Wheel(-46, -8, 22);
         // Front wheel
-        this.frontWheel = new Wheel(40, -12, 22);
+        this.frontWheel = new Wheel(46, -8, 22);
 
         // Control inputs
         this.controls = {
@@ -223,8 +229,8 @@ class Car {
         };
 
         // Upgradable engine/air attributes
-        this.enginePower = 1800;
-        this.maxSpeed = 800;
+        this.enginePower = 2400;
+        this.maxSpeed = 900;
         this.airControlTorque = 4000; // Torque applied in the air for flips
         
         // Fuel settings
@@ -240,8 +246,9 @@ class Car {
         const rB = this.backWheel.localOffset.rotate(this.angle);
         const rF = this.frontWheel.localOffset.rotate(this.angle);
         
-        this.backWheel.pos = this.pos.add(rB).add(new Vector2D(0, -this.suspensionRestLength));
-        this.frontWheel.pos = this.pos.add(rF).add(new Vector2D(0, -this.suspensionRestLength));
+        const suspAxis = new Vector2D(0, -1).rotate(this.angle);
+        this.backWheel.pos = this.pos.add(rB).add(suspAxis.mult(this.suspensionRestLength));
+        this.frontWheel.pos = this.pos.add(rF).add(suspAxis.mult(this.suspensionRestLength));
         
         this.backWheel.vel = this.vel.clone();
         this.frontWheel.vel = this.vel.clone();
@@ -266,6 +273,10 @@ class Car {
 
         const gravityVec = new Vector2D(0, terrain.gravity);
         const wheelMass = 15;
+
+        // Initialize chassis total forces and torque (gravity starts it off)
+        let totalForce = gravityVec.mult(this.mass);
+        let totalTorque = 0;
 
         // Apply external forces on wheels (gravity, terrain collision)
         [this.backWheel, this.frontWheel].forEach((wheel, idx) => {
@@ -329,6 +340,12 @@ class Car {
                 // Apply force to wheel along tangent
                 wheel.vel = wheel.vel.add(tangent.mult(fTraction * dt / wheelMass));
                 
+                // Transfer horizontal tractive force directly to the chassis via rigid linkages
+                const r = wheel.localOffset.rotate(this.angle);
+                const forceChassis = tangent.mult(fTraction);
+                totalForce = totalForce.add(forceChassis);
+                totalTorque += r.cross(forceChassis);
+                
                 // Spin wheel based on speed along terrain
                 wheel.angularVelocity = vt / wheel.radius;
             } else {
@@ -344,46 +361,60 @@ class Car {
             wheel.angle += wheel.angularVelocity * dt;
         });
 
-        // 2. Chassis Physics
-        let totalForce = gravityVec.mult(this.mass); // Start with gravity
-        let totalTorque = 0;
+        // 2. Chassis Physics - Suspension and Integration
 
-        // Apply suspension springs
+        // Apply suspension springs projected along chassis local vertical axis
         [this.backWheel, this.frontWheel].forEach((wheel) => {
             // World attachment point
             const r = wheel.localOffset.rotate(this.angle);
             const attachPos = this.pos.add(r);
 
-            // Suspension vector (from attach point to wheel center)
-            const suspVec = wheel.pos.sub(attachPos);
-            const suspDist = suspVec.length();
+            // Suspension axis is the local down vector of the chassis: (0, -1) rotated
+            const suspAxis = new Vector2D(0, -1).rotate(this.angle);
+
+            // Vector from attachment point to wheel center
+            const offset = wheel.pos.sub(attachPos);
             
-            if (suspDist > 0) {
-                const suspDir = suspVec.normalize();
-                
-                // Spring compression (restLength - current distance)
-                const xCompression = this.suspensionRestLength - suspDist;
-                
-                // Relative velocity along suspension direction
-                const relVel = wheel.vel.sub(this.getVelocityAtPoint(r));
-                const vSpeed = relVel.dot(suspDir);
-
-                // Damped spring force: F = k * x + c * v
-                const springForceMagnitude = (this.suspensionSpringK * xCompression) + (this.suspensionDampingC * vSpeed);
-                
-                // Clamp spring force to avoid pulling wheel inside chassis on huge extensions
-                const suspForce = suspDir.mult(Math.max(-3000, Math.min(5000, springForceMagnitude)));
-
-                // Force on chassis is opposite of force on wheel
-                // The spring pushes the wheel away from chassis, and chassis away from wheel
-                totalForce = totalForce.sub(suspForce);
-
-                // Torque = r x F
-                totalTorque += r.cross(suspForce.mult(-1));
-
-                // Push the wheel (equal and opposite to suspension force on chassis)
-                wheel.vel = wheel.vel.add(suspForce.mult(dt / wheelMass));
+            // Suspension length is the projection of the offset along the suspension axis
+            let suspLength = offset.dot(suspAxis);
+            
+            // Hard suspension travel constraints:
+            // 1. Minimum compression limit (prevent wheel-chassis overlapping)
+            // 2. Maximum extension limit (prevent wheel detaching/stretching infinitely)
+            const maxSuspLength = this.suspensionRestLength + 12;
+            if (suspLength < 10) {
+                wheel.pos = attachPos.add(suspAxis.mult(10));
+                suspLength = 10;
+            } else if (suspLength > maxSuspLength) {
+                wheel.pos = attachPos.add(suspAxis.mult(maxSuspLength));
+                suspLength = maxSuspLength;
             }
+
+            // Spring compression (restLength - current distance along axis)
+            const xCompression = this.suspensionRestLength - suspLength;
+
+            // Relative velocity of wheel to attachment point
+            const relVel = wheel.vel.sub(this.getVelocityAtPoint(r));
+            
+            // Speed along suspension axis
+            const vSpeed = relVel.dot(suspAxis);
+
+            // Damped spring force: F = k * x - c * v (damping must oppose the rate of compression/expansion)
+            const springForceMagnitude = (this.suspensionSpringK * xCompression) - (this.suspensionDampingC * vSpeed);
+            
+            // Clamp spring force to keep it in a safe range (must be larger than gravity force 78,000)
+            const clampedMagnitude = Math.max(-20000, Math.min(200000, springForceMagnitude));
+            const suspForce = suspAxis.mult(clampedMagnitude);
+
+            // Force on chassis is opposite to force on wheel
+            // The spring pushes the chassis UP (opposite to suspAxis) and wheel DOWN (along suspAxis)
+            totalForce = totalForce.sub(suspForce);
+
+            // Torque = r x F_chassis (F_chassis = -suspForce)
+            totalTorque += r.cross(suspForce.mult(-1));
+
+            // Force on wheel is suspForce
+            wheel.vel = wheel.vel.add(suspForce.mult(dt / wheelMass));
         });
 
         // Air controls (torque applied when vehicle is in the air)
@@ -423,15 +454,25 @@ class Car {
         if (this.pos.x < 0) {
             this.pos.x = 0;
             this.vel.x = Math.max(0, this.vel.x);
+            // Reset wheels horizontally to prevent negative drift glitches
+            this.backWheel.pos.x = Math.max(this.backWheel.pos.x, -50);
+            this.backWheel.vel.x = Math.max(this.backWheel.vel.x, 0);
+            this.frontWheel.pos.x = Math.max(this.frontWheel.pos.x, -50);
+            this.frontWheel.vel.x = Math.max(this.frontWheel.vel.x, 0);
         }
 
         // 3. Driver Head position and Crash Detection
         const driverHeadWorld = this.pos.add(this.driverHeadLocal.rotate(this.angle));
         const headGroundY = terrain.getHeight(driverHeadWorld.x);
         
-        // If driver head goes below terrain, crash!
+        // If driver head goes below terrain, check if the car is also flipped (neck flip)
+        // This prevents false crashes while climbing steep hills upright
         if (driverHeadWorld.y < headGroundY + 5) {
-            this.isCrashed = true;
+            const angleDeg = Math.abs(this.angle * 180 / Math.PI) % 360;
+            // Only crash if the chassis is tilted past 82 degrees (inverted roof area)
+            if (angleDeg > 82 && angleDeg < 278) {
+                this.isCrashed = true;
+            }
         }
     }
 
