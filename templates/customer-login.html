@@ -1,10 +1,101 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<style>
+    /* Premium Login Animations & Styles */
+    .auth-wrapper {
+        min-height: calc(100vh - 80px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    
+    .video-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+        filter: brightness(0.6) saturate(1.2);
+    }
+    
+    .bg-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.2) 0%, rgba(0, 0, 0, 0.6) 100%);
+        backdrop-filter: blur(4px);
+        z-index: 1;
+    }
+
+    .premium-glass {
+        background: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 30px 60px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(255,255,255,0.5);
+        border-radius: 1.5rem;
+        transform: translateY(30px);
+        opacity: 0;
+        animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .form-floating > .form-control {
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-floating > .form-control:focus {
+        background: rgba(255, 255, 255, 0.95);
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+        transform: translateY(-2px);
+    }
+
+    .btn-primary-custom {
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-primary-custom:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
+    }
+
+    @keyframes slideUpFade {
+        from {
+            opacity: 0;
+            transform: translateY(40px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    .stagger-1 { animation-delay: 0.1s; }
+    .stagger-2 { animation-delay: 0.2s; }
+    .stagger-3 { animation-delay: 0.3s; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="auth-wrapper position-relative">
-    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: rgba(0,0,0,0.5); z-index: 0;"></div>
+    <video class="video-bg" autoplay loop muted playsinline>
+        <!-- High quality abstract tech/medical background video -->
+        <source src="https://cdn.pixabay.com/video/2020/04/10/35924-409156009_large.mp4" type="video/mp4">
+    </video>
+    <div class="bg-overlay"></div>
     
-    <div class="auth-card glass-card position-relative z-1 my-5 fade-in-up">
+    <div class="auth-card premium-glass position-relative z-3 my-5 p-4" style="max-width: 450px; width: 100%;">
         
         <!-- Toggle Buttons -->
         <ul class="nav nav-pills nav-justified mb-4" id="pills-tab" role="tablist">
@@ -16,17 +107,17 @@
             </li>
         </ul>
         
-        <div class="tab-content" id="pills-tabContent">
+        <div class="tab-content stagger-1" id="pills-tabContent">
             <!-- Login Form -->
             <div class="tab-pane fade show active" id="pills-login" role="tabpanel">
-                <div class="text-center mb-4">
+                <div class="text-center mb-4 stagger-1">
                     <h3 class="fw-bold text-dark">Customer Login</h3>
                     <p class="text-muted small">Access your shopping cart and orders</p>
                 </div>
                 
                 <div class="alert alert-danger d-none" id="login-error"></div>
                 
-                <form id="loginForm">
+                <form id="loginForm" class="stagger-2">
                     <div class="form-floating mb-3">
                         <input type="text" class="form-control" id="loginUsername" placeholder="Username" required>
                         <label for="loginUsername">Username</label>
@@ -35,13 +126,13 @@
                         <input type="password" class="form-control" id="loginPassword" placeholder="Password" required>
                         <label for="loginPassword">Password</label>
                     </div>
-                    <button type="submit" class="btn btn-primary-custom w-100 py-2" id="loginBtn">Login to Shop</button>
+                    <button type="submit" class="btn btn-primary-custom w-100 py-2 stagger-3" id="loginBtn">Login to Shop</button>
                 </form>
             </div>
             
             <!-- Register Form -->
             <div class="tab-pane fade" id="pills-register" role="tabpanel">
-                <div class="text-center mb-4">
+                <div class="text-center mb-4 stagger-1">
                     <h3 class="fw-bold text-dark">Create Account</h3>
                     <p class="text-muted small">Sign up to buy medicines online</p>
                 </div>
@@ -49,7 +140,7 @@
                 <div class="alert alert-success d-none" id="register-success"></div>
                 <div class="alert alert-danger d-none" id="register-error"></div>
 
-                <form id="registerForm">
+                <form id="registerForm" class="stagger-2">
                     <div class="row g-2 mb-3">
                         <div class="col-6 form-floating">
                             <input type="text" class="form-control" id="regFirstName" placeholder="First Name" required>
@@ -72,12 +163,12 @@
                         <input type="text" class="form-control" id="regPhone" placeholder="Phone Number" required>
                         <label for="regPhone">Phone Number</label>
                     </div>
-                    <div class="form-floating mb-3">
+                    <div class="form-floating mb-3 stagger-3">
                         <input type="password" class="form-control" id="regPassword" placeholder="Password" required>
                         <label for="regPassword">Password</label>
                     </div>
                     
-                    <button type="submit" class="btn btn-success-custom w-100 py-2 mt-2" id="registerBtn">Create Account</button>
+                    <button type="submit" class="btn btn-success-custom w-100 py-2 mt-2 stagger-3" id="registerBtn">Create Account</button>
                 </form>
             </div>
         </div>
